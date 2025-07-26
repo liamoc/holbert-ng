@@ -22,7 +22,8 @@ module Make = (
     let ret = ref(Error("impossible"))
     while go.contents {
       switch Rule.parseTopLevel(cur.contents, ~scope=[]) {
-      | Ok((t, n), rest) => if n->String.trim == "" {
+      | Ok((t, n), rest) =>
+        if n->String.trim == "" {
           go := false
           ret := Error("Rule given with no name")
         } else {

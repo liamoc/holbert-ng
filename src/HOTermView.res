@@ -1,4 +1,4 @@
-type props = {term: SExp.t, scope: array<string>}
+type props = {term: HOTerm.t, scope: array<string>}
 open Util
 type idx_props = {idx: int, scope: array<string>}
 let viewVar = (props: idx_props) =>
@@ -37,14 +37,6 @@ let intersperse = a =>
 @react.componentWithProps
 let rec make = ({term, scope}) =>
   switch term {
-  | Compound({subexps: bits}) =>
-    <span className="term-compound">
-      {bits
-      ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
-      ->intersperse
-      ->parenthesise
-      ->React.array}
-    </span>
   | Var({idx}) => viewVar({idx, scope})
   | Symbol({name: s}) => <span className="term-const"> {React.string(s)} </span>
   | Schematic({schematic: s, allowed: vs}) =>

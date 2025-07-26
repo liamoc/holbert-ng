@@ -89,7 +89,8 @@ and unifyArray = (a: array<(t, t)>) => {
     let (x, y) = a[0]->Option.getUnsafe
     switch unifyTerm(x, y) {
     | None => None
-    | Some(s1) => switch a
+    | Some(s1) =>
+      switch a
       ->Array.sliceToEnd(~start=1)
       ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
       ->unifyArray {
@@ -99,7 +100,7 @@ and unifyArray = (a: array<(t, t)>) => {
     }
   }
 }
-let unify = (a: t, b: t) => {
+let unify = (a: t, b: t, ~gen=?) => {
   switch unifyTerm(a, b) {
   | None => []
   | Some(s) => [s]
@@ -303,7 +304,8 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
               Array.push(bits, it.contents->getVar->Option.getUnsafe)
             }
             switch it.contents {
-            | Some(RParen) => switch gen {
+            | Some(RParen) =>
+              switch gen {
               | Some(g) => {
                   seen(g, num)
                   Some(Schematic({schematic: num, allowed: bits}))

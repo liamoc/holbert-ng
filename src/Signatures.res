@@ -3,13 +3,13 @@ module type TERM = {
   type schematic
   type meta
   type subst = Map.t<schematic, t>
+  type gen
   let substitute: (t, subst) => t
-  let unify: (t, t) => array<subst>
+  let unify: (t, t, ~gen: gen=?) => array<subst>
   // law: unify(a,b) == [{}] iff equivalent(a,b)
   let equivalent: (t, t) => bool
   let substDeBruijn: (t, array<t>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
-  type gen
   let fresh: (gen, ~replacing: meta=?) => schematic
   let seen: (gen, schematic) => unit
   let place: (schematic, ~scope: array<meta>) => t
@@ -25,7 +25,7 @@ module type JUDGMENT = {
   type t
   let substitute: (t, Term.subst) => t
   let equivalent: (t, t) => bool
-  let unify: (t, t) => array<Term.subst>
+  let unify: (t, t, ~gen: Term.gen=?) => array<Term.subst>
   let substDeBruijn: (t, array<Term.t>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
