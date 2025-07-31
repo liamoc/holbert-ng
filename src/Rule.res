@@ -6,7 +6,7 @@ let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s
 module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
   let rec substitute = (rule: t, subst: Term.subst) => {
-    let subst' = subst->Util.mapMapValues(v => v->Term.upshift(Array.length(rule.vars)))
+    let subst' = subst->Term.mapMapValues(v => v->Term.upshift(Array.length(rule.vars)))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
@@ -46,7 +46,8 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     let re = RegExp.fromStringWithFlags(ruleNamePattern, ~flags="y")
     switch re->RegExp.exec(String.trim(str)) {
     | None => Error("expected rule name")
-    | Some(res) => switch res[0] {
+    | Some(res) =>
+      switch res[0] {
       | Some(Some(n)) if String.trim(n) != "" =>
         Ok(n, String.sliceToEnd(String.trim(str), ~start=RegExp.lastIndex(re)))
       | _ => Error("expected rule name")
@@ -57,7 +58,8 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     let re = RegExp.fromStringWithFlags(vinculumRES, ~flags="y")
     switch re->RegExp.exec(str) {
     | None => Error("expected vinculum")
-    | Some(res) => switch res[1] {
+    | Some(res) =>
+      switch res[1] {
       | Some(Some(n)) if String.trim(n) != "" =>
         Ok(n, String.sliceToEnd(str, ~start=RegExp.lastIndex(re)))
       | _ => Ok("", String.sliceToEnd(str, ~start=RegExp.lastIndex(re)))

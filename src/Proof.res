@@ -82,10 +82,8 @@ module Make = (
       cur := cur.contents->String.trim->String.sliceToEnd(~start=2)->String.trim
       let scope' = Array.concat(fixes, scope)
       switch parseKeyword(cur.contents) {
-      | Some("?") => Ok((
-          {fixes, assumptions, method: None},
-          cur.contents->String.sliceToEnd(~start=1),
-        ))
+      | Some("?") =>
+        Ok(({fixes, assumptions, method: None}, cur.contents->String.sliceToEnd(~start=1)))
       | Some(keyword) => {
           cur := cur.contents->String.sliceToEnd(~start=String.length(keyword))
           switch Method.parse(cur.contents, ~keyword, ~scope=scope', ~gen, ~subparser=parse) {

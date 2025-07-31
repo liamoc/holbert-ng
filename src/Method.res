@@ -189,7 +189,8 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let parse = (input, ~keyword as _, ~scope, ~gen, ~subparser) => {
     //todo add toplevel
     switch Rule.parseInner(input, ~scope, ~gen) {
-    | Ok((rule, rest)) => switch subparser(rest, ~scope, ~gen) {
+    | Ok((rule, rest)) =>
+      switch subparser(rest, ~scope, ~gen) {
       | Ok((proof, rest')) =>
         switch String.trim(rest')->subparser(~scope, ~gen) {
         | Ok((show, rest'')) => Ok({rule, proof, show}, rest'')

@@ -12,7 +12,7 @@
     "res:clean": "rescript clean",
     "res:dev": "rescript -w",
     "res:format": "rescript format -all",
-    "test": "pta 'tests/*.mjs'",
+    "test": "npm run res:build && pta 'tests/*.mjs'",
     "test-watch": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'"
   },
   "dependencies": {

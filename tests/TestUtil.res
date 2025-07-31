@@ -22,4 +22,36 @@ module MakeTerm = (Term: TERM) => {
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
+  let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    let res = Term.unify(a, b, ~gen)
+    if res->Array.length == 0 {
+      t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      switch subst {
+      | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
+      | Some(subst) => {
+          t->equal(res->Array.length, 1)
+          t->equal(
+            res[0]->Option.getExn,
+            subst,
+            ~msg=msg->Option.getOr("unification succeeded with substitution"),
+          )
+        }
+      }
+    }
+  }
+  let testNotUnify = (t: Zora.t, at: string, bt: string, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    let res = Term.unify(a, b)
+    if res->Array.length != 0 {
+      t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      t->ok(true, ~msg=msg->Option.getOr("unification failed"))
+    }
+  }
 }
