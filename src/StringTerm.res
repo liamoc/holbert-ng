@@ -1,5 +1,3 @@
-open Util
-
 module IntCmp = Belt.Id.MakeComparable({
   type t = int
   let cmp = Pervasives.compare
@@ -42,28 +40,6 @@ let freeVarsIn = (term: t): Belt.Set.t<int, IntCmp.identity> =>
     }
   })->Array.reduce(Belt.Set.make(~id=module(IntCmp)), (s1, s2) => Belt.Set.union(s1, s2))
 
-let rec partitions = (n: int, xs: array<'a>): array<array<array<'a>>> => {
-  let len = Array.length(xs)
-  if n <= 0 || n > len || len == 0 {
-    []
-  } else if n == 1 {
-    [[xs]]
-  } else {
-    let x = xs[0]->Option.getExn
-    let xs = Array.sliceToEnd(xs, ~start=1)
-    let breakHere = partitions(n - 1, xs)->Array.map(partition => Array.concat([[x]], partition))
-    let breakLater =
-      partitions(n, xs)
-      ->Array.map(partition => {
-        let firstPart = partition[0]->Option.getExn
-        let restParts = Array.sliceToEnd(partition, ~start=1)
-        Array.concat([[x], firstPart], restParts)
-      })
-      ->Array.filter(partition => Array.length(partition) > 0)
-    Array.concat(breakHere, breakLater)
-  }
-}
-
 let combineSubst = (s: subst, t: subst) => {
   let nu = Map.make()
   Map.entries(s)->Iterator.forEach(opt =>
@@ -93,14 +69,15 @@ let uncons = (xs: array<'a>): ('a, array<'a>) => {
   | _ => (xs[0]->Option.getExn, Array.sliceToEnd(xs, ~start=1))
   }
 }
-let match = (p1: piece, p2: piece) => {
-  switch (p1, p2) {
-  | (String(na), String(nb)) if na == nb => true
-  | (Var({idx: ia}), Var({idx: ib})) if ia == ib => true
-  | (_, _) => false
-  }
-}
+
 let unify = (s: array<piece>, t: array<piece>): array<subst> => {
+  let match = (p1: piece, p2: piece) => {
+    switch (p1, p2) {
+    | (String(na), String(nb)) if na == nb => true
+    | (Var({idx: ia}), Var({idx: ib})) if ia == ib => true
+    | (_, _) => false
+    }
+  }
   let rec inner = (s, t) => {
     switch (s, t) {
     | ([], []) => [emptySubst]
@@ -141,6 +118,8 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
       }
     }
   }
+
+  // naive: assume schematics appear in at most one side
   if schematicsIn(s)->Belt.Set.isEmpty {
     inner(t, s)
   } else if schematicsIn(t)->Belt.Set.isEmpty {
@@ -149,6 +128,7 @@ let unify = (s: array<piece>, t: array<piece>): array<subst> => {
     []
   }
 }
+
 // law: unify(a,b) == [{}] iff equivalent(a,b)
 let equivalent: (t, t) => bool = (s, t) => s == t
 let substDeBruijn = (string: t, substs: array<t>, ~from: int=0) => {
@@ -413,7 +393,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), str
       | Concat =>
         switch tokens[tokenIdx.contents + 1] {
         | None | Some({content: RParen}) => error("expected string to follow concatenation")
-        | Some(c) => ()
+        | Some(_) => ()
         }
       }
       tokenIdx := tokenIdx.contents + 1
