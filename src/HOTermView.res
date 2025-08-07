@@ -1,4 +1,4 @@
-type props = {term: SExp.t, scope: array<string>}
+type props = {term: HOTerm.t, scope: array<string>}
 open Util
 type idx_props = {idx: int, scope: array<string>}
 let viewVar = (props: idx_props) =>
@@ -37,26 +37,32 @@ let intersperse = a =>
 @react.componentWithProps
 let rec make = ({term, scope}) =>
   switch term {
-  | Compound({subexps: bits}) =>
-    <span className="term-compound">
-      {bits
-      ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
-      ->intersperse
-      ->parenthesise
-      ->React.array}
-    </span>
   | Var({idx}) => viewVar({idx, scope})
   | Symbol({name: s}) => <span className="term-const"> {React.string(s)} </span>
-  | Schematic({schematic: s, allowed: vs}) =>
+  | Schematic({schematic: s}) =>
     <span className="term-schematic">
       {React.string("?")}
       {React.int(s)}
-      <span className="term-schematic-telescope">
-        {vs
-        ->Array.mapWithIndex((v, i) => React.createElement(viewVar, withKey({idx: v, scope}, i)))
-        ->intersperse
-        ->parenthesise
-        ->React.array}
-      </span>
     </span>
+  | App(_) =>
+    switch HOTerm.strip(term) {
+    | (func, args) =>
+      <span className="term-app">
+        {React.createElement(make, {term: func, scope})}
+        <span className="term-app-telescope">
+          {args
+          ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
+          ->intersperse
+          ->parenthesise
+          ->React.array}
+        </span>
+      </span>
+    }
+  | Lam({name, body}) => {
+      let newScope = Array.concat([name], scope)
+      <span className="term-lambda">
+        {React.string(name)}
+        {React.createElement(make, {term: body, scope: newScope})}
+      </span>
+    }
   }
