@@ -5,17 +5,17 @@ let ruleNamePattern = "^[^|()\\s\\-—][^()\\s]*"
 let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s]*)?"
 module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
-  let rec substitute = (rule: t, subst: Term.subst) => {
-    let subst' = subst->Term.mapSubst(v => v->Term.upshift(Array.length(rule.vars)))
+  let rec substitute = (rule: t, subst: Judgment.subst) => {
+    let subst' = subst->Judgment.mapSubst(v => v->Judgment.upshiftSubstVal(Array.length(rule.vars)))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
       conclusion: rule.conclusion->Judgment.substitute(subst'),
     }
   }
-  let rec substDeBruijn = (rule: t, substs: array<Term.t>, ~from: int=0) => {
+  let rec substDeBruijn = (rule: t, substs: array<Judgment.substVal>, ~from: int=0) => {
     let len = Array.length(rule.vars)
-    let substs' = substs->Array.map(v => v->Term.upshift(len, ~from))
+    let substs' = substs->Array.map(v => v->Judgment.upshiftSubstVal(len, ~from))
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise =>
@@ -33,7 +33,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
   type bare = {premises: array<t>, conclusion: Judgment.t}
-  let instantiate = (rule: t, terms: array<Term.t>) => {
+  let instantiate = (rule: t, terms: array<Judgment.substVal>) => {
     assert(Array.length(terms) == Array.length(rule.vars))
     let terms' = [...terms]
     Array.reverse(terms')

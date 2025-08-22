@@ -10,8 +10,8 @@ module MakeTerm = (Term: TERM) => {
       ~msg=msg->Option.getOr(`${stringifyExn(t1)} equivalent to ${stringifyExn(t2)}`),
     )
   }
-  let testParse = (t: Zora.t, input: string, t2: Term.t, ~msg=?) => {
-    let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
+  let testParse = (t: Zora.t, input: string, t2: Term.t, ~scope=[], ~msg=?) => {
+    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok(res) => {
         t->equal(res->snd, "", ~msg=input ++ " input consumed")
@@ -22,36 +22,17 @@ module MakeTerm = (Term: TERM) => {
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
-  let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
-    let gen = Term.makeGen()
-    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
-    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
-    let res = Term.unify(a, b, ~gen)
-    if res->Array.length == 0 {
-      t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
-    } else {
-      switch subst {
-      | None => t->ok(true, ~msg=msg->Option.getOr("unification succeeded"))
-      | Some(subst) => {
-          t->equal(res->Array.length, 1)
-          t->equal(
-            res[0]->Option.getExn,
-            subst,
-            ~msg=msg->Option.getOr("unification succeeded with substitution"),
-          )
-        }
-      }
-    }
-  }
-  let testNotUnify = (t: Zora.t, at: string, bt: string, ~msg=?) => {
-    let gen = Term.makeGen()
-    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
-    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
-    let res = Term.unify(a, b)
-    if res->Array.length != 0 {
-      t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
-    } else {
-      t->ok(true, ~msg=msg->Option.getOr("unification failed"))
+  let testParseFail = (t: Zora.t, input: string, ~scope=[], ~msg=?) => {
+    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
+    switch res {
+    | Ok((p, remaining)) =>
+      t->fail(
+        ~msg=`parse intended to fail, but succeeded: ${Term.prettyPrint(
+            p,
+            ~scope,
+          )}\nremaining: ${remaining}`,
+      )
+    | Error(_) => t->ok(true)
     }
   }
   let testParsePrettyPrint = (t: Zora.t, input, expected, ~scope=[]) => {
@@ -63,6 +44,35 @@ module MakeTerm = (Term: TERM) => {
         t->equal(result, expected, ~msg="prettyPrint output matches expected")
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
+
+  let substArrayPrettyPrint = (ss: array<Term.subst>) => {
+    ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
+  }
+
+  let testUnify = (t: Zora.t, t1: Term.t, t2: Term.t, expect: array<Term.subst>, ~msg=?) => {
+    let expect = Seq.fromArray(expect)
+    let res = Term.unify(t1, t2)->Seq.take(10)
+    Console.log(res->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Seq.join(","))
+    let noMatches =
+      expect
+      ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)
+      ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
+      ->Seq.toArray
+    let msg = msg->Option.getOr("each substitution in `expect` should have a match in solutions")
+    t->equal(noMatches, [], ~msg)
+  }
+
+  let testUnifyFail = (t: Zora.t, at: string, bt: string, ~msg=?) => {
+    let gen = Term.makeGen()
+    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    let res = Term.unify(a, b)
+    if res->Seq.length != 0 {
+      t->fail(~msg="unification succeeded: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
+    } else {
+      t->ok(true, ~msg=msg->Option.getOr("unification failed"))
     }
   }
 }
