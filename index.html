@@ -260,6 +260,7 @@
   </style>
   </head>
   <body>
+    <h1>SExp</h1>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
       x.y. 
       (/\ x y)
@@ -291,6 +292,110 @@
           |- by (ayx) {} } 
       }
     </hol-proof>
+    <h1>String</h1>
+    <h2>Basic</h2>
+    <hol-string id="index.html/quux" deps="index.html/myconfig">
+        ---- Empty
+        "" p
+
+        p1.
+        "$p1" p
+        ------- Surround
+        "($p1)" p
+
+        p1. p2.
+        "$p1" p   "$p2" p
+        ------- Concat
+        "$p1 $p2" p
+    </hol-string>
+    <hol-string-proof id="index.html/stringprooftest" deps="index.html/myconfig index.html/quux">
+      -------- paren
+      "()(())" p
+      |- by (Concat "()" "(())") {
+        |- by (Surround "") {
+          |- by (Empty) {}
+        }
+        |- by (Surround "()") {
+          |- by (Surround "") {
+            |- by (Empty) {}
+          }
+        }
+      }
+    </hol-string-proof>
+    <hol-string id="index.html/bool" deps="index.html/myconfig">
+      ------- T-Atom
+      "T" Atom
+      ------- F-Atom
+      "F" Atom
+
+      e.
+      "$e" Atom
+      --------- Atom-AE
+      "$e" AE
+
+      e1.e2.
+      "$e1" Atom  "$e2" AE
+      -------------------- And
+      "$e1 /\\ $e2" AE
+
+      e.
+      "$e" AE
+      --------- AE-B
+      "$e" B
+
+      e1.e2.
+      "$e1" AE "$e2" B
+      ----------------- Or
+      "$e1 \\/ $e2" B
+
+      e.
+      "$e" B
+      ----------- Paren
+      "($e)" Atom
+    </hol-string>
+    <hol-string-proof id="index.html/boolprooftest" deps="index.html/myconfig index.html/bool">
+      ------------- bool
+      "T/\\(T\\/F)" AE
+      |- by (And "T" "(T\\/F)") {
+        |- by (T-Atom) {}
+        |- by (Atom-AE "(T\\/F)") {
+          |- by (Paren "T\\/F") {
+            |- by (Or "T" "F") {
+              |- by (Atom-AE "T") {
+                |- by (T-Atom) {}
+              }
+              |- by (AE-B "F") {
+                |- by (Atom-AE "F") {
+                  |- by (F-Atom) {}
+                }
+              }
+            }
+          }
+        }
+      }
+    </hol-string-proof>
+    <h2>With first-order term judgments</h2>
+    <hol-string id="index.html/quux-comp" deps="index.html/myconfig">
+      ---- Empty
+      "" ()
+
+      s1. p1.
+      "$s1" p1
+      ------------- Surround
+      "($s1)" (p1)
+
+      s1. s2. p1. p2.
+      "$s1" p1
+      "$s1" p2
+      ------------------- Juxtapose
+      "$s1 $s2" (p1 p2)
+    </hol-string>
+    <hol-string id="index.html/quux-induct" deps="index.html/myconfig">
+      s. p.
+      "" arr    s1. p1. "$s1" arr (p1 ) |- 
+      ---------------------------------- M-Induct
+      "$s" arr p
+    </hol-string>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>

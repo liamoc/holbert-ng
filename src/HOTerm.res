@@ -15,11 +15,13 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Belt.Map.Int.t<t>
+type substVal = t
 let substHas = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.has(schematic)
 let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(schematic)
 let mapSubst = (m: subst, f: t => t): subst => {
   m->Belt.Map.Int.map(f)
 }
+let substEqual = (m1, m2) => m1 == m2
 let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb
@@ -118,6 +120,7 @@ let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =
   }
 let mapbind = (term: t, f: int => int, ~from: int=0): t => mapbind0(term, idx => Ok(f(idx)), ~from)
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
+let upshiftSubstVal = upshift
 let downshift = (term: t, amount: int, ~from: int=1) => {
   if amount > from {
     raise(Err("downshift amount must be less than from"))
@@ -451,13 +454,14 @@ and rigidrigid = (
   }
   unifyArray(xs, ys, subst, ~gen)
 }
-let unify = (a: t, b: t, ~gen=?) => {
-  try {
-    [unifyTerm(a, b, emptySubst, ~gen)]
-  } catch {
-  | UnifyFail(_) => []
-  }
-}
+let unify = (a: t, b: t, ~gen=?) =>
+  Seq.fromArray(
+    try {
+      [unifyTerm(a, b, emptySubst, ~gen)]
+    } catch {
+    | UnifyFail(_) => []
+    },
+  )
 let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
 })
@@ -500,6 +504,9 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(")")
   | Unallowed => ""
   }
+let prettyPrintSubstVal = prettyPrint
+let prettyPrintSubst = (sub: subst, ~scope: array<string>) =>
+  Util.prettyPrintIntMap(sub, ~showV=t => prettyPrint(t, ~scope))
 let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
@@ -684,3 +691,4 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   | ParseError(msg) => Error(msg)
   }
 }
+let parseSubstVal = parse

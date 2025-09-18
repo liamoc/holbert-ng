@@ -136,16 +136,16 @@ zoraBlock("unify test", t => {
     let x = "x"
     let y = "y"
     t->testUnify(x, x)
-    t->Util.testNotUnify(y, x)
-    t->Util.testNotUnify(x, y)
+    t->Util.testUnifyFail(y, x)
+    t->Util.testUnifyFail(x, y)
   })
   t->block("applications", t => {
     let ab = "(a b)"
     let cd = "(c d)"
     t->testUnify(ab, ab)
     t->testUnify(cd, cd)
-    t->Util.testNotUnify(ab, cd)
-    t->Util.testNotUnify(cd, ab)
+    t->Util.testUnifyFail(ab, cd)
+    t->Util.testUnifyFail(cd, ab)
   })
   t->block("flex-rigid", t => {
     let x = "?0"
@@ -252,13 +252,13 @@ zoraBlock("unify test", t => {
     let a = "(x. ?0 x)"
     let b = "(x. f (?0 x))"
     // ?0 occurs in the rigid term on the right → should not unify
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
   })
   t->block("no capture", t => {
     let a = "(x. ?0)"
     let b = "(x. x)"
     // Should fail: it cannot capture the bound variable.
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
   })
   t->block("eta", t => {
     t->testUnify(
@@ -272,6 +272,6 @@ zoraBlock("unify test", t => {
     let divergent = "((x. x x) (x. x x))"
     let a = "((x. ?0 x) (x. x x))"
     // TODO: should it not unify or not?
-    t->Util.testNotUnify(a, divergent)
+    t->Util.testUnifyFail(a, divergent)
   })
 })

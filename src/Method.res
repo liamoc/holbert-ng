@@ -37,7 +37,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   module Context = Context(Term, Judgment)
   type t<'a> = {
     ruleName: string,
-    instantiation: array<Term.t>,
+    instantiation: array<Judgment.substVal>,
     subgoals: array<'a>,
   }
   let uncheck = (it: t<'a>, f) => {
@@ -55,7 +55,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ~indentation=0,
     ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
   ) => {
-    let args = it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope))
+    let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstVal(t, ~scope))
     "by ("
     ->String.concat(Array.join([it.ruleName, ...args], " "))
     ->String.concat(") {")
@@ -82,7 +82,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Term.parse(cur.contents, ~scope, ~gen)
+            it := Judgment.parseSubstVal(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn

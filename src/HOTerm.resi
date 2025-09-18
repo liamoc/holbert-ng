@@ -20,3 +20,9 @@ exception UnifyFail(string)
 let substAdd: (subst, schematic, t) => subst
 let unifyTerm: (t, t, subst, ~gen: option<gen>) => subst
 let reduceSubst: subst => subst
+
+// TODO: confirm that this is the best way to make compatible with new judgement signature
+type substVal = t
+let upshiftSubstVal: (substVal, int, ~from: int=?) => substVal
+let prettyPrintSubstVal: (substVal, ~scope: array<meta>) => string
+let parseSubstVal: (string, ~scope: array<meta>, ~gen: gen=?) => result<(substVal, string), string>
