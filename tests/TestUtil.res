@@ -1,5 +1,6 @@
 open Signatures
 open Zora
+open Util
 
 let stringifyExn = (t: 'a) => JSON.stringifyAny(t, ~space=2)->Option.getExn
 
@@ -20,6 +21,20 @@ module MakeTerm = (Term: TERM) => {
         t->equal(res->fst, t2, ~msg?)
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
+    }
+  }
+  let parse = (t: Zora.t, input: string): Term.t => {
+    let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
+    switch res {
+    | Ok((term, "")) => term
+    | Ok((_, rest)) => {
+        t->fail(~msg="parse incomplete: " ++ rest)
+        raise(Unreachable(""))
+      }
+    | Error(msg) => {
+        t->fail(~msg="parse failed: " ++ msg)
+        raise(Unreachable(""))
+      }
     }
   }
   let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {

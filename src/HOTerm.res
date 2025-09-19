@@ -133,6 +133,9 @@ let upshift_tt = (subst: array<(t, t)>, ~amount: int=1): array<(t, t)> => {
   subst->Array.map(((a, b)) => (upshift(a, amount), upshift(b, amount)))
 }
 // where pattern unification used mapbind we will need to use discharge for FCU
+//
+// When `prune` is true, it marks “dead” variables as Unallowed. Nipkow 1993 uses Var(-infinity) for this in the de Bruijn’s notation implementation.
+// Nipkow 1993's non de Bruijn implementation handle this logic in `proj`. Similarly Makoto Hamana's paper uses `elem` and `subst` in `prune`
 let rec discharge = (subst: array<(t, t)>, term: t, ~prune: bool): t => {
   switch lookup(term, subst) {
   | Some(found) => found
@@ -307,12 +310,9 @@ let mkvars = (n: int): array<t> => {
 let rec proj_allowed = (subst: subst, term: t): bool => {
   let term' = devar(subst, term)
   switch term' {
-  | Lam(_) => false
-  | Unallowed => false
-  | Schematic(_) => false
-  | Symbol(_) => false
+  | Lam(_) | Unallowed | Schematic(_) | Symbol(_) => false
   | Var(_) => true // pattern unification only allows this
-  // FCU allows this, right?
+  // FCU allows this:
   | App(_) =>
     switch strip(term') {
     | (Symbol(_) | Var(_), args) => Array.every(args, x => proj_allowed(subst, x))
@@ -390,10 +390,11 @@ let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<g
     raise(UnifyFail("flexible schematic occurs in rigid term"))
   }
   // pattern unification
-  //let u = b->mapbind0(bind => idx2(xs, bind))
+  // let u = b->mapbind0(bind => idx2(xs, bind))
   // FCU
   let zn = mkvars(xs->Array.length)
-  let u = discharge(Belt.Array.zip(xs, zn), b, ~prune=true)
+  // we reversed it so that the last one will be picked if there are duplicates. This behaviour helps certain real world cases.
+  let u = discharge(Belt.Array.reverse(Belt.Array.zip(xs, zn)), b, ~prune=true)
   proj(subst->substAdd(sa, lams(xs->Array.length, u)), u, ~gen)
 }
 let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
