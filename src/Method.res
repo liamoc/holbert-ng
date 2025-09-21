@@ -2,6 +2,7 @@ open Signatures
 open Util
 module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
+  // TODO: why is this recursive?
   type rec t = {
     fixes: array<Term.meta>,
     facts: Dict.t<Rule.t>,
@@ -157,6 +158,130 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     }
   }
 }
+
+// module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
+//   module Rule = Rule.Make(Term, Judgment)
+//   module Context = Context(Term, Judgment)
+//   type t<'a> = {
+//     ruleName: string,
+//     elimName: string,
+//     subgoals: array<'a>,
+//   }
+//   let uncheck = (it: t<'a>, f) => {
+//     {
+//       ruleName: it.ruleName,
+//       elimName: it.elimName,
+//       subgoals: it.subgoals->Array.map(f),
+//     }
+//   }
+//   exception InternalParseError(string)
+//   let keywords = ["elim"]
+//   let prettyPrint = (
+//     it: t<'a>,
+//     ~scope,
+//     ~indentation=0,
+//     ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
+//   ) => {
+//     let subgoalsSpacer = if Array.length(it.subgoals) > 0 {
+//       newline
+//     } else {
+//       ""
+//     }
+//     let subgoalsStr =
+//       it.subgoals
+//       ->Array.map(s => subprinter(s, ~scope, ~indentation=indentation + 2))
+//       ->Array.join(newline)
+//     `elim (${it.ruleName} ${it.elimName}) {${subgoalsSpacer}${subgoalsStr}}`
+//   }
+//
+//   let parse = (input, ~keyword as _, ~scope, ~gen, ~subparser) => {
+//     let cur = ref(String.trim(input))
+//     if cur.contents->String.get(0) == Some("(") {
+//       Rule.parseRuleName(cur.contents->String.sliceToEnd(~start=1))->Result.map(((
+//         ruleName,
+//         rest,
+//       )) => {
+//         cur := rest
+//         Rule.parseRuleName(cur.contents)->Result.map(((elimName, rest)) => {
+//           if cur.contents->String.get(0) == Some(")") {
+//             cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
+//             let subgoals = []
+//             if cur.contents->String.get(0) == Some("{") {
+//               cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
+//               try {
+//                 while cur.contents->String.get(0) != Some("}") {
+//                   switch subparser(cur.contents, ~scope, ~gen) {
+//                   | Ok((sg, rest)) => {
+//                       Array.push(subgoals, sg)
+//                       cur := String.trim(rest)
+//                     }
+//                   | Error(e) => raise(InternalParseError(e))
+//                   }
+//                 }
+//                 if cur.contents->String.get(0) == Some("}") {
+//                   cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
+//                   Ok(({ruleName, elimName, subgoals}, cur.contents))
+//                 } else {
+//                   Error("} or subgoal proof expected")
+//                 }
+//               } catch {
+//               | InternalParseError(e) => Error(e)
+//               }
+//             } else {
+//               Error("{ expected")
+//             }
+//           } else {
+//             Error(") or term expected")
+//           }
+//         })
+//       })
+//     } else {
+//       Error("Expected (")
+//     }
+//   }
+//
+//   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
+//     switch (ctx.facts->Dict.get(it.ruleName), ctx.facts->Dict.get(it.elimName)) {
+//     | (None, _) => Error(`Cannot find rule '${it.ruleName}'`)
+//     | (_, None) => Error(`Cannot find elimination fact '${it.elimName}'`)
+//     | (Some(rule), Some(elim)) if rule.premises->Array.length > 0 => {
+//         let premise = rule.premises[0]->Option.getExn
+//         let subs = Judgment.unify(premise.conclusion, elim.conclusion)
+//         switch subs->Seq.head {
+//         | Some(sub) => {
+//             let rule' = rule->Rule.substitute(sub)
+//             let concSubs = Judgment.unify(rule.conclusion, ___)
+//           }
+//         | None => Error("no valid substitutions")
+//         }
+//         let {premises, conclusion} = Rule.instantiate(rule, it.instantiation)
+//         if Judgment.equivalent(conclusion, j) {
+//           if Array.length(it.subgoals) == Array.length(premises) {
+//             Ok({
+//               ruleName: it.ruleName,
+//               instantiation: it.instantiation,
+//               subgoals: Belt.Array.zipBy(it.subgoals, premises, f),
+//             })
+//           } else {
+//             Error("Incorrect number of subgoals")
+//           }
+//         } else {
+//           let concString = Judgment.prettyPrint(conclusion, ~scope=ctx.fixes)
+//           let goalString = Judgment.prettyPrint(j, ~scope=ctx.fixes)
+//           Error(
+//             "Conclusion of rule '"
+//             ->String.concat(concString)
+//             ->String.concat("' doesn't match goal '")
+//             ->String.concat(goalString)
+//             ->String.concat("'"),
+//           )
+//         }
+//       }
+//     | _ => Error("Rule doesn't have at least one premise")
+//     }
+//   }
+// }
+
 module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)

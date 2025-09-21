@@ -96,18 +96,28 @@ module Make = (
     }
   }
   let enter = (ctx: Context.t, prf: t, rule: Rule.t) => {
+    let (nFixes, nVars) = (Array.length(prf.fixes), Array.length(rule.vars))
     if Array.length(prf.fixes) == Array.length(rule.vars) {
-      if Array.length(prf.assumptions) == Array.length(rule.premises) {
+      let (nAssumptions, nPremises) = (Array.length(prf.assumptions), Array.length(rule.premises))
+      if nAssumptions == nPremises {
         let newFacts = Dict.fromArray(Belt.Array.zip(prf.assumptions, rule.premises))
         Ok({
           Context.fixes: rule.vars->Array.concat(ctx.fixes),
           facts: Dict.copy(ctx.facts)->Dict.assign(newFacts),
         })
       } else {
-        Error("Proof introduces a different number of assumptions than the rule")
+        Error(
+          `Proof introduces a different number (${Int.toString(
+              nAssumptions,
+            )}) of assumptions than the rule (${Int.toString(nPremises)})`,
+        )
       }
     } else {
-      Error("Proof introduces a different number of variables than the rule")
+      Error(
+        `Proof introduces a different number (${Int.toString(
+            nFixes,
+          )}) of variables than the rule (${Int.toString(nVars)})`,
+      )
     }
   } //result<Context, string>
 

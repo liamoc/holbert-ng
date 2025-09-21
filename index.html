@@ -298,15 +298,15 @@
         ---- M-Empty
         "" M
 
-        p1.
-        "$p1" M
+        s.
+        "$s" M
         ------- M-Surround
-        "($p1)" M
+        "($s)" M
 
-        p1. p2.
-        "$p1" M   "$p2" M
+        s1. s2.
+        "$s1" M   "$s2" M
         ------- M-Juxtapose
-        "$p1 $p2" M
+        "$s1 $s2" M
     </hol-string>
     <hol-string-proof id="index.html/stringprooftest" deps="index.html/myconfig index.html/mexp">
       -------- paren
@@ -419,39 +419,35 @@
         |- by (L-Empty) {}
       }
     </hol-string-proof>
-    <hol-string-proof id="index.html/lexp-surr" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
-      s. "$s" L
-      --------lexp-surr
-      "($s)" L
-      s. sl |- by (N-L "($s)") {
-        |- by (L-Surround "$s") {
-          |- by (sl) {}
-        }
-      }
-    </hol-string-proof>
-    <hol-string-proof id="index.html/mexp-induct-proof" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
     <hol-string-proof id="index.html/lexp-juxt" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
       s1.s2. "$s1" L "$s2" L
       --------------------- lexp-juxt
       "$s1 $s2" L
-      s1. s2 |- by (L_induct )
-    </hol-string-proof>
-    <hol-string-proof id="index.html/lexp-juxt" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp">
-      s. "$s" L
-      --------lexp-surr
-      "($s)" L
-      s. sl |- by (N-L "($s)") {
-        |- by (L-Surround "$s") {
-          |- by (sl) {}
+      s1. s2. s1L s2L |- by (L_induct "" "$s1" "$s2" L) {
+        |- by (s1L) {}
+        |- by (s2L) {}
+        s11. s12. s11N s12L IHs12 |- by (L-Juxtapose "$s11" "$s12 $s2") {
+          |- by (s11N) {}
+          |- by (IHs12) {}
         }
       }
     </hol-string-proof>
+    <hol-string-proof id="index.html/mexp-lexp" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp index.html/lexp-juxt index.html/lexp-n">
       s. "$s" M
-      --------------mexp-lexp
+      ----------- mexp-lexp
       "$s" L
-      s. sm |- by (M-Induct "$s" L) {
-        |- by (sm) {}
-        |- by (lexp-empty) {}
+      s. sM |- by (M_induct "" "$s" "" L) {
+        |- by (sM) {}
+        |- by (L-Empty) {}
+        s1. s1M IHs1 |- by (N-L "($s1)") {
+          |- by (N-Surr "$s1") {
+            |- by (IHs1) {}
+          }
+        }
+        s1. s2. s1M s2M IHs1 IHs2 |- by (lexp-juxt "$s1" "$s2") {
+          |- by (IHs1) {}
+          |- by (IHs2) {}
+        }
       }
     </hol-string-proof>
   <script type="module" src="./src/testcomponent.tsx"></script>
