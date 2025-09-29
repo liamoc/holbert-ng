@@ -2,7 +2,7 @@ open Signatures
 // the tree sitter plugin hates backslashes in string literals unless they're on the top
 // level..
 let ruleNamePattern = "^[^|()\\s\\-—][^()\\s]*"
-let vinculumRES = "^\s*\\n\\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s]*)?"
+let vinculumRES = "^\s*[-—][-—][\\-—]+[ \t]*([^()|\\s\\-—][^()\\s]*)?"
 module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   type rec t = {vars: array<Term.meta>, premises: array<t>, conclusion: Judgment.t}
   let rec substitute = (rule: t, subst: Term.subst) => {
