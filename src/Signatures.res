@@ -3,11 +3,14 @@ module type TERM = {
   type schematic
   type meta
   type subst
-  let mapSubst: (subst, t => t) => subst
   type gen
+  let mapSubst: (subst, t => t) => subst
+  let mergeSubsts: (subst, subst) => subst
+  let substEqual: (subst, subst) => bool
+  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
   let substitute: (t, subst) => t
-  let makeSubst: () => subst
-  let unify: (t, t, ~gen: gen=?) => array<subst>
+  let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
+  let makeSubst: unit => subst
   // law: unify(a,b) == [{}] iff equivalent(a,b)
   let equivalent: (t, t) => bool
   let substDeBruijn: (t, array<t>, ~from: int=?) => t
@@ -25,13 +28,28 @@ module type TERM = {
 module type JUDGMENT = {
   module Term: TERM
   type t
-  let substitute: (t, Term.subst) => t
+  type subst
+  type substCodom
+  type schematic = Term.schematic
+  type meta = Term.meta
+  let mapSubst: (subst, substCodom => substCodom) => subst
+  let mergeSubsts: (subst, subst) => subst
+  let substitute: (t, subst) => t
+  let substituteSubstVal: (substCodom, subst) => substCodom
   let equivalent: (t, t) => bool
-  let unify: (t, t, ~gen: Term.gen=?) => array<Term.subst>
-  let substDeBruijn: (t, array<Term.t>, ~from: int=?) => t
+  let unify: (t, t, ~gen: Term.gen=?) => Seq.t<subst>
+  let substDeBruijn: (t, array<substCodom>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
+  let upshiftSubstVal: (substCodom, int, ~from: int=?) => substCodom
+  let placeSubstVal: (schematic, ~scope: array<meta>) => substCodom
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
+  let parseSubstVal: (
+    string,
+    ~scope: array<Term.meta>,
+    ~gen: Term.gen=?,
+  ) => result<(substCodom, string), string>
   let prettyPrint: (t, ~scope: array<Term.meta>) => string
+  let prettyPrintSubstVal: (substCodom, ~scope: array<Term.meta>) => string
 }
 
 module type TERM_VIEW = {

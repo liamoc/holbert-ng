@@ -2,7 +2,7 @@ open Signatures
 open Util
 module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
-  type rec t = {
+  type t = {
     fixes: array<Term.meta>,
     facts: Dict.t<Rule.t>,
   }
@@ -15,9 +15,9 @@ module type PROOF_METHOD = {
   module Context: module type of Context(Term, Judgment)
   type t<'a>
   let keywords: array<string>
-  let substitute: (t<'a>, Term.subst) => t<'a>
+  let substitute: (t<'a>, Judgment.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
-  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Term.subst)>
+  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Dict.t<(t<'a>, Judgment.subst)>
   let map: (t<'a>, 'a => 'b) => t<'b>
   let parse: (
     string,
@@ -39,7 +39,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   module Context = Context(Term, Judgment)
   type t<'a> = {
     ruleName: string,
-    instantiation: array<Term.t>,
+    instantiation: array<Judgment.substCodom>,
     subgoals: array<'a>,
   }
   let map = (it: t<'a>, f) => {
@@ -49,10 +49,10 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
       subgoals: it.subgoals->Array.map(f),
     }
   }
-  let substitute = (it: t<'a>, subst: Term.subst) => {
+  let substitute = (it: t<'a>, subst: Judgment.subst) => {
     {
       ruleName: it.ruleName,
-      instantiation: it.instantiation->Array.map(t => t->Term.substitute(subst)),
+      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstVal(subst)),
       subgoals: it.subgoals,
     }
   }
@@ -64,9 +64,9 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ~indentation=0,
     ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
   ) => {
-    let args = it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope))
+    let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstVal(t, ~scope))
     "by ("
-    ->String.concat(Array.join([it.ruleName, ...args], " "))
+    ->String.concat(Array.join([it.ruleName]->Array.concat(args), " "))
     ->String.concat(") {")
     ->String.concat(
       if Array.length(it.subgoals) > 0 {
@@ -91,7 +91,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Term.parse(cur.contents, ~scope, ~gen)
+            it := Judgment.parseSubstVal(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -138,11 +138,10 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let ret = Dict.make()
     ctx.facts->Dict.forEachWithKey((rule, key) => {
-      let insts =
-        rule.vars->Array.map(m => Term.place(gen->Term.fresh(~replacing=m), ~scope=ctx.fixes))
+      let insts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
       let substs = Judgment.unify(res.conclusion, j, ~gen)
-      substs->Array.forEach(subst => {
+      substs->Seq.forEach(subst => {
         let new = {
           ruleName: key,
           instantiation: insts,
@@ -184,11 +183,196 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     }
   }
   let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
-    let newsgs = [...it.subgoals]
-    newsgs->Array.set(key,f(newsgs[key]->Option.getExn))
+    let newsgs = it.subgoals->Array.copy
+    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
     {...it, subgoals: newsgs}
   }
 }
+
+module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
+  module Rule = Rule.Make(Term, Judgment)
+  module Context = Context(Term, Judgment)
+  type t<'a> = {
+    ruleName: string,
+    elimName: string,
+    instantiation: array<Judgment.substCodom>,
+    subgoals: array<'a>,
+  }
+  exception InternalParseError(string)
+  let keywords = ["elim"]
+  let prettyPrint = (
+    it: t<'a>,
+    ~scope,
+    ~indentation=0,
+    ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
+  ) => {
+    let subgoalsSpacer = if Array.length(it.subgoals) > 0 {
+      newline
+    } else {
+      ""
+    }
+    let subgoalsStr =
+      it.subgoals
+      ->Array.map(s => subprinter(s, ~scope, ~indentation=indentation + 2))
+      ->Array.join(newline)
+    `elim (${it.ruleName} ${it.elimName}) {${subgoalsSpacer}${subgoalsStr}}`
+  }
+
+  let map = (it: t<'a>, f) => {
+    {
+      ruleName: it.ruleName,
+      elimName: it.elimName,
+      instantiation: it.instantiation,
+      subgoals: it.subgoals->Array.map(f),
+    }
+  }
+
+  let substitute = (it: t<'a>, subst: Judgment.subst) => {
+    {
+      ruleName: it.ruleName,
+      elimName: it.elimName,
+      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstVal(subst)),
+      subgoals: it.subgoals,
+    }
+  }
+
+  let parse = (input, ~keyword as _, ~scope, ~gen, ~subparser) => {
+    let cur = ref(String.trim(input))
+    if cur.contents->String.get(0) == Some("(") {
+      Rule.parseRuleName(cur.contents->String.sliceToEnd(~start=1))->Result.flatMap(((
+        ruleName,
+        rest,
+      )) => {
+        cur := rest
+        Rule.parseRuleName(cur.contents)->Result.flatMap(((elimName, _rest)) => {
+          let instantiation = []
+          let it = ref(Error(""))
+          while {
+            it := Judgment.parseSubstVal(cur.contents, ~scope, ~gen)
+            it.contents->Result.isOk
+          } {
+            let (val, rest) = it.contents->Result.getExn
+            Array.push(instantiation, val)
+            cur := String.trim(rest)
+          }
+          if cur.contents->String.get(0) == Some(")") {
+            cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
+            let subgoals = []
+            if cur.contents->String.get(0) == Some("{") {
+              cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
+              try {
+                while cur.contents->String.get(0) != Some("}") {
+                  switch subparser(cur.contents, ~scope, ~gen) {
+                  | Ok((sg, rest)) => {
+                      Array.push(subgoals, sg)
+                      cur := String.trim(rest)
+                    }
+                  | Error(e) => raise(InternalParseError(e))
+                  }
+                }
+                if cur.contents->String.get(0) == Some("}") {
+                  cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
+                  Ok(({ruleName, elimName, instantiation, subgoals}, cur.contents))
+                } else {
+                  Error("} or subgoal proof expected")
+                }
+              } catch {
+              | InternalParseError(e) => Error(e)
+              }
+            } else {
+              Error("{ expected")
+            }
+          } else {
+            Error(") or term expected")
+          }
+        })
+      })
+    } else {
+      Error("Expected (")
+    }
+  }
+
+  let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
+    switch (ctx.facts->Dict.get(it.ruleName), ctx.facts->Dict.get(it.elimName)) {
+    | (None, _) => Error(`Cannot find rule '${it.ruleName}'`)
+    | (_, None) => Error(`Cannot find elimination fact '${it.elimName}'`)
+    | (Some(rule), Some(elim)) if rule.premises->Array.length > 0 => {
+        let {premises, conclusion} = Rule.instantiate(rule, it.instantiation)
+        let elimPremise = premises[0]->Option.getExn
+        let remainingPremises = premises->Array.sliceToEnd(~start=1)
+        if elimPremise.premises->Array.length > 0 {
+          Error(`Premise to eliminate in rule ${it.ruleName} has non-empty premises`)
+        } else if elim.premises->Array.length > 0 {
+          Error(`Elimination motive (?) ${it.elimName} has non-empty premises`)
+        } else if !Judgment.equivalent(elimPremise.conclusion, elim.conclusion) {
+          Error(`Premise to eliminate and elimination motive (?) ${it.elimName} do not match`)
+        } else if !Judgment.equivalent(conclusion, j) {
+          let concString = Judgment.prettyPrint(conclusion, ~scope=ctx.fixes)
+          let goalString = Judgment.prettyPrint(j, ~scope=ctx.fixes)
+          Error(`Conclusion of rule '${concString}' doesn't match goal '${goalString}'`)
+        } else if Array.length(it.subgoals) != Array.length(remainingPremises) {
+          let subgoalsRem = Array.length(it.subgoals)->Int.toString
+          let premsRem = Array.length(remainingPremises)->Int.toString
+          Error(
+            `Number of subgoals (${subgoalsRem}) doesn't match rule ${it.ruleName}'s remaining number (${premsRem})`,
+          )
+        } else {
+          Ok({
+            ruleName: it.ruleName,
+            elimName: it.elimName,
+            instantiation: it.instantiation,
+            subgoals: Belt.Array.zipBy(it.subgoals, premises, f),
+          })
+        }
+      }
+    | (Some(_), Some(_)) => Error(`Rule ${it.ruleName} doesn't have any premises`)
+    }
+  }
+
+  let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
+    let newsgs = it.subgoals->Array.copy
+    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
+    {...it, subgoals: newsgs}
+  }
+
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+    let ret = Dict.make()
+    let possibleRules =
+      ctx.facts
+      ->Dict.toArray
+      ->Array.filter(((_, r)) =>
+        r.premises->Array.length > 0 && (r.premises[0]->Option.getExn).premises->Array.length == 0
+      )
+    let possibleElims =
+      ctx.facts->Dict.toArray->Array.filter(((_, r)) => r.premises->Array.length == 0)
+    possibleRules->Array.forEach(((ruleName, rule)) => {
+      possibleElims->Array.forEach(((elimName, elim)) => {
+        let ruleInsts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
+        let elimInsts = elim->Rule.schematise(gen, ~scope=ctx.fixes)
+        let (rule', elim) = (rule->Rule.instantiate(ruleInsts), elim->Rule.instantiate(elimInsts))
+        Judgment.unify((rule.premises[0]->Option.getExn).conclusion, elim.conclusion)->Seq.forEach(
+          elimSub => {
+            let rule'' = rule'->Rule.substituteBare(elimSub)
+            Judgment.unify(rule''.conclusion, j, ~gen)->Seq.forEach(
+              ruleSub => {
+                let subst = Judgment.mergeSubsts(elimSub, ruleSub)
+                let new = {
+                  ruleName,
+                  elimName,
+                  instantiation: ruleInsts,
+                  subgoals: rule.premises->Array.map(f),
+                }
+                ret->Dict.set(`elim ${ruleName} with ${elimName}`, (new, subst))
+              },
+            )
+          },
+        )
+      })
+    })
+    ret
+  }
+}
+
 module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
@@ -204,7 +388,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       show: f(it.show),
     }
   }
-  let substitute = (it: t<'a>, subst: Term.subst) => {
+  let substitute = (it: t<'a>, subst: Judgment.subst) => {
     {
       rule: it.rule->Rule.substitute(subst),
       proof: it.proof,

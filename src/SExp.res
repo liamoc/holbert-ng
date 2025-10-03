@@ -11,13 +11,8 @@ type rec t =
 type meta = string
 type schematic = int
 type subst = Map.t<schematic, t>
-let mapSubst = (m: subst, f: t => t): subst => {
-  let nu = Map.make()
-  m->Map.forEachWithKey((v, k) => {
-    nu->Map.set(k, f(v))
-  })
-  nu
-}
+let substEqual = Util.mapEqual
+let mapSubst = Util.mapMapValues
 let makeSubst = () => {
   Map.make()
 }
@@ -111,10 +106,12 @@ and unifyArray = (a: array<(t, t)>) => {
   }
 }
 let unify = (a: t, b: t, ~gen as _=?) => {
-  switch unifyTerm(a, b) {
-  | None => []
-  | Some(s) => [s]
-  }
+  Seq.fromArray(
+    switch unifyTerm(a, b) {
+    | None => []
+    | Some(s) => [s]
+    },
+  )
 }
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
@@ -169,6 +166,8 @@ let place = (x: int, ~scope: array<string>) => Schematic({
   schematic: x,
   allowed: Array.fromInitializer(~length=Array.length(scope), i => i),
 })
+let mergeSubsts = Util.mapUnion
+
 type gen = ref<int>
 let seen = (g: gen, s: int) => {
   if s >= g.contents {
@@ -180,11 +179,13 @@ let fresh = (g: gen, ~replacing as _=?) => {
   g := g.contents + 1
   v
 }
-let prettyPrintVar = (idx: int, scope: array<string>) =>
+let prettyPrintVar = (idx: int, scope: array<string>) => {
+  Console.log(("ppVar", "idx", idx, "scope[idx]", scope[idx], "scope", scope))
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx => n
   | _ => "\\"->String.concat(String.make(idx))
   }
+}
 let makeGen = () => {
   ref(0)
 }
@@ -203,7 +204,9 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
     ->String.concat(")")
   }
-let symbolRegexpString = "^([^\\s()]+)"
+
+let prettyPrintSubst = (sub, ~scope) => Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
+let symbolRegexpString = `^([^\\s()\\[\\]]+)`
 let varRegexpString = "^\\\\([0-9]+)$"
 let schematicRegexpString = "^\\?([0-9]+)$"
 type lexeme = LParen | RParen | VarT(int) | SymbolT(string) | SchematicT(int)

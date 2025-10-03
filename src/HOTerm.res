@@ -20,9 +20,17 @@ let substGet = (subst: subst, schematic: schematic) => subst->Belt.Map.Int.get(s
 let mapSubst = (m: subst, f: t => t): subst => {
   m->Belt.Map.Int.map(f)
 }
+let substEqual = (m1, m2) => m1 == m2
 let makeSubst = () => {
   Belt.Map.Int.empty
 }
+let mergeSubsts = (m1: subst, m2: subst) =>
+  Belt.Map.Int.merge(m1, m2, (_, o1, o2) =>
+    switch (o1, o2) {
+    | (Some(v), _) | (_, Some(v)) => Some(v)
+    | (None, None) => None
+    }
+  )
 let rec equivalent = (a: t, b: t) => {
   switch (a, b) {
   | (Symbol({name: na}), Symbol({name: nb})) => na == nb
@@ -179,6 +187,7 @@ let rec substitute = (term: t, subst: subst) =>
     })
   | Var(_) | Unallowed | Symbol(_) => term
   }
+
 // TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter - it should not be needed for subst produced by pattern unification
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   switch term {
@@ -455,16 +464,18 @@ and rigidrigid = (
   }
   unifyArray(xs, ys, subst, ~gen)
 }
-let unify = (a: t, b: t, ~gen=?) => {
-  try {
-    [unifyTerm(a, b, emptySubst, ~gen)]
-  } catch {
-  | UnifyFail(_) => []
-  }
-}
+let unify = (a: t, b: t, ~gen=?) =>
+  Seq.fromArray(
+    try {
+      [unifyTerm(a, b, emptySubst, ~gen)]
+    } catch {
+    | UnifyFail(_) => []
+    },
+  )
 let place = (x: int, ~scope as _: array<string>) => Schematic({
   schematic: x,
 })
+
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx => n
@@ -504,6 +515,8 @@ let rec prettyPrint = (it: t, ~scope: array<string>) =>
     ->String.concat(")")
   | Unallowed => ""
   }
+let prettyPrintSubst = (sub: subst, ~scope: array<string>) =>
+  Util.prettyPrintIntMap(sub, ~showV=t => prettyPrint(t, ~scope))
 let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)

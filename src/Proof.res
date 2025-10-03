@@ -24,13 +24,13 @@ module Make = (
     | ProofError({raw: t, rule: Rule.t, msg: string})
   and checked_option_method =
     | Do(Method.t<checked>)
-    | Goal(Term.gen => Dict.t<(Method.t<checked>, Term.subst)>)
+    | Goal(Term.gen => Dict.t<(Method.t<checked>, Judgment.subst)>)
   let parseKeyword = input => {
     Method.keywords
     ->Array.concat(["?"])
     ->Array.find(kw => String.trim(input)->String.startsWith(kw))
   }
-  let rec substitute = (prf: t, subst: Term.subst) => {
+  let rec substitute = (prf: t, subst: Judgment.subst) => {
     fixes: prf.fixes,
     assumptions: prf.assumptions,
     method: prf.method->Option.map(m =>
@@ -109,18 +109,28 @@ module Make = (
     }
   }
   let enter = (ctx: Context.t, prf: t, rule: Rule.t) => {
+    let (nFixes, nVars) = (Array.length(prf.fixes), Array.length(rule.vars))
     if Array.length(prf.fixes) == Array.length(rule.vars) {
-      if Array.length(prf.assumptions) == Array.length(rule.premises) {
+      let (nAssumptions, nPremises) = (Array.length(prf.assumptions), Array.length(rule.premises))
+      if nAssumptions == nPremises {
         let newFacts = Dict.fromArray(Belt.Array.zip(prf.assumptions, rule.premises))
         Ok({
           Context.fixes: rule.vars->Array.concat(ctx.fixes),
           facts: Dict.copy(ctx.facts)->Dict.assign(newFacts),
         })
       } else {
-        Error("Proof introduces a different number of assumptions than the rule")
+        Error(
+          `Proof introduces a different number (${Int.toString(
+              nAssumptions,
+            )}) of assumptions than the rule (${Int.toString(nPremises)})`,
+        )
       }
     } else {
-      Error("Proof introduces a different number of variables than the rule")
+      Error(
+        `Proof introduces a different number (${Int.toString(
+            nFixes,
+          )}) of variables than the rule (${Int.toString(nVars)})`,
+      )
     }
   } //result<Context, string>
 
@@ -180,7 +190,7 @@ module Make = (
     }
   } // result<checked,string>
 
-  let substituteChecked = (prf: checked, ctx: Context.t, subst: Term.subst) => {
+  let substituteChecked = (prf: checked, ctx: Context.t, subst: Judgment.subst) => {
     switch prf {
     | Checked(prf) =>
       check(ctx, Checked(prf)->uncheck->substitute(subst), prf.rule->Rule.substitute(subst))

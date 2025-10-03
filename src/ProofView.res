@@ -16,7 +16,7 @@ module Make = (
     scope: array<Term.meta>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
-    onChange: (Proof.checked, Term.subst) => ()
+    onChange: (Proof.checked, Judgment.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   @react.componentWithProps
@@ -36,19 +36,43 @@ module Make = (
           <div className="proof-show">
             <JudgmentView judgment={rule.conclusion} scope />
             {switch method {
-            | Goal(options) => 
-              options(props.gen)->Dict.toArray->Array.map( ((str, (opt,subst))) => {
-                <button key=str onClick={_ => props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule}), subst)}> {React.string(str)} </button>
-              })->React.array
+            | Goal(options) =>
+              options(props.gen)
+              ->Dict.toArray
+              ->Array.map(((str, (opt, subst))) => {
+                <button
+                  key=str
+                  onClick={_ =>
+                    props.onChange(
+                      Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
+                      subst,
+                    )}>
+                  {React.string(str)}
+                </button>
+              })
+              ->React.array
             | Do(method) =>
               React.createElement(
                 MethodView.make(p =>
-                  make({proof: p["proof"], scope: p["scope"], ruleStyle: p["ruleStyle"], gen: p["gen"], onChange: p["onChange"]})
+                  make({
+                    proof: p["proof"],
+                    scope: p["scope"],
+                    ruleStyle: p["ruleStyle"],
+                    gen: p["gen"],
+                    onChange: p["onChange"],
+                  })
                 ),
-                {method, scope, ruleStyle: props.ruleStyle, gen: props.gen, onChange: 
-                  (newm, subst) => {
-                    props.onChange(Proof.Checked({fixes, assumptions, method: Do(newm), rule}), subst)
-                  }
+                {
+                  method,
+                  scope,
+                  ruleStyle: props.ruleStyle,
+                  gen: props.gen,
+                  onChange: (newm, subst) => {
+                    props.onChange(
+                      Proof.Checked({fixes, assumptions, method: Do(newm), rule}),
+                      subst,
+                    )
+                  },
                 },
               )
             }}

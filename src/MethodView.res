@@ -4,15 +4,39 @@ module type METHOD_VIEW = {
   module Term: TERM
   module Judgment: JUDGMENT with module Term := Term
   module Method: PROOF_METHOD with module Term := Term and module Judgment := Judgment
-  type props<'a> = {method: Method.t<'a>, scope: array<Term.meta>, ruleStyle: RuleView.style, gen: Term.gen, onChange: (Method.t<'a>, Term.subst) => ()}
-  type srProps<'a> = {"proof": 'a, "scope": array<Term.meta>, "ruleStyle": RuleView.style, "gen": Term.gen, "onChange": ('a, Term.subst) => ()}
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<Term.meta>,
+    ruleStyle: RuleView.style,
+    gen: Term.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
+  type srProps<'a> = {
+    "proof": 'a,
+    "scope": array<Term.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": Term.gen,
+    "onChange": ('a, Judgment.subst) => unit,
+  }
   let make: (srProps<'a> => React.element) => props<'a> => React.element
 }
 
 module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Method = Derivation(Term, Judgment)
-  type props<'a> = {method: Method.t<'a>, scope: array<Term.meta>, ruleStyle: RuleView.style, gen: Term.gen, onChange: (Method.t<'a>, Term.subst) => ()}
-  type srProps<'a> = {"proof": 'a, "scope": array<Term.meta>, "ruleStyle": RuleView.style, "gen": Term.gen, "onChange": ('a, Term.subst) => ()}
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<Term.meta>,
+    ruleStyle: RuleView.style,
+    gen: Term.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
+  type srProps<'a> = {
+    "proof": 'a,
+    "scope": array<Term.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": Term.gen,
+    "onChange": ('a, Judgment.subst) => unit,
+  }
   let make = (subRender: srProps<'a> => React.element) => props => {
     <div>
       <b> {React.string("by ")} </b>
@@ -23,8 +47,56 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
           <li key={String.make(i)}>
             {React.createElement(
               subRender,
-              {"proof": sg, "scope": props.scope, "ruleStyle": props.ruleStyle, "gen": props.gen, "onChange": (newa, subst) => 
-                props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst)
+              {
+                "proof": sg,
+                "scope": props.scope,
+                "ruleStyle": props.ruleStyle,
+                "gen": props.gen,
+                "onChange": (newa, subst: Judgment.subst) =>
+                  props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
+              },
+            )}
+          </li>
+        })
+        ->React.array}
+      </ul>
+    </div>
+  }
+}
+
+module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
+  module Method = Elimination(Term, Judgment)
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<Term.meta>,
+    ruleStyle: RuleView.style,
+    gen: Term.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
+  type srProps<'a> = {
+    "proof": 'a,
+    "scope": array<Term.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": Term.gen,
+    "onChange": ('a, Judgment.subst) => unit,
+  }
+  let make = (subRender: srProps<'a> => React.element) => props => {
+    <div>
+      <b> {React.string("by ")} </b>
+      {React.string(props.method.ruleName)}
+      <ul>
+        {props.method.subgoals
+        ->Array.mapWithIndex((sg, i) => {
+          <li key={String.make(i)}>
+            {React.createElement(
+              subRender,
+              {
+                "proof": sg,
+                "scope": props.scope,
+                "ruleStyle": props.ruleStyle,
+                "gen": props.gen,
+                "onChange": (newa, subst: Judgment.subst) =>
+                  props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
               },
             )}
           </li>
@@ -42,18 +114,18 @@ module LemmaView = (
 ) => {
   module Method = Lemma(Term, Judgment)
   type props<'a> = {
-    method: Method.t<'a>, 
-    scope: array<Term.meta>, 
-    ruleStyle: RuleView.style, 
-    gen: Term.gen, 
-    onChange: (Method.t<'a>, Term.subst) => () 
+    method: Method.t<'a>,
+    scope: array<Term.meta>,
+    ruleStyle: RuleView.style,
+    gen: Term.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
   }
   type srProps<'a> = {
-    "proof": 'a, 
-    "scope": array<Term.meta>, 
-    "ruleStyle": RuleView.style, 
-    "gen":Term.gen,
-    "onChange": ('a, Term.subst) => ()
+    "proof": 'a,
+    "scope": array<Term.meta>,
+    "ruleStyle": RuleView.style,
+    "gen": Term.gen,
+    "onChange": ('a, Judgment.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   let make = (subRender: srProps<'a> => React.element) => props => {
@@ -62,20 +134,26 @@ module LemmaView = (
       <RuleView rule={props.method.rule} scope={props.scope} style={props.ruleStyle}>
         {React.null}
       </RuleView>
-      {React.createElement(subRender, {
-        "proof": props.method.proof, 
-        "scope": props.scope, 
-        "ruleStyle": props.ruleStyle, 
-        "gen": props.gen, 
-        "onChange": (proof, subst) => { props.onChange({...props.method, proof}, subst) } 
-      })}
-      {React.createElement(subRender, {
-        "proof": props.method.show, 
-        "scope": props.scope, 
-        "ruleStyle": props.ruleStyle,
-        "gen": props.gen,
-        "onChange": (show, subst) => { props.onChange({...props.method, show}, subst) } 
-      })}
+      {React.createElement(
+        subRender,
+        {
+          "proof": props.method.proof,
+          "scope": props.scope,
+          "ruleStyle": props.ruleStyle,
+          "gen": props.gen,
+          "onChange": (proof, subst) => {props.onChange({...props.method, proof}, subst)},
+        },
+      )}
+      {React.createElement(
+        subRender,
+        {
+          "proof": props.method.show,
+          "scope": props.scope,
+          "ruleStyle": props.ruleStyle,
+          "gen": props.gen,
+          "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
+        },
+      )}
     </div>
   }
 }
@@ -89,14 +167,32 @@ module CombineMethodView = (
     and type srProps<'a> = Method1View.srProps<'a>,
 ) => {
   module Method = Combine(Term, Judgment, Method1View.Method, Method2View.Method)
-  type props<'a> = {method: Method.t<'a>, scope: array<Term.meta>, ruleStyle: RuleView.style, gen: Term.gen, onChange: (Method.t<'a>, Term.subst) => ()}
+  type props<'a> = {
+    method: Method.t<'a>,
+    scope: array<Term.meta>,
+    ruleStyle: RuleView.style,
+    gen: Term.gen,
+    onChange: (Method.t<'a>, Judgment.subst) => unit,
+  }
   type srProps<'a> = Method1View.srProps<'a>
   let make = (subrender: srProps<'a> => React.element) => props => {
     switch props.method {
     | First(m) =>
-      Method1View.make(subrender)({method: m, scope: props.scope, ruleStyle: props.ruleStyle, gen: props.gen, onChange: (n,s) => props.onChange(First(n), s)})
+      Method1View.make(subrender)({
+        method: m,
+        scope: props.scope,
+        ruleStyle: props.ruleStyle,
+        gen: props.gen,
+        onChange: (n, s) => props.onChange(First(n), s),
+      })
     | Second(m) =>
-      Method2View.make(subrender)({method: m, scope: props.scope, ruleStyle: props.ruleStyle, gen: props.gen, onChange: (n,s) => props.onChange(Second(n), s)})
+      Method2View.make(subrender)({
+        method: m,
+        scope: props.scope,
+        ruleStyle: props.ruleStyle,
+        gen: props.gen,
+        onChange: (n, s) => props.onChange(Second(n), s),
+      })
     }
   }
 }

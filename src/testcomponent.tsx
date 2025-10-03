@@ -1,12 +1,9 @@
-import * as ComponentGraph from './componentgraph'
-import { AxiomS, ConfS, TheoremS } from './Scratch.mjs'
-import ReactDOM from 'react-dom/client';
-import React from 'react';
+import * as ComponentGraph from "./componentgraph";
+import { AxiomS, ConfS, TheoremS, AxiomStr, TheoremStr } from "./Scratch.mjs";
+import ReactDOM from "react-dom/client";
+import React from "react";
 
-
-
-
-type Component = ComponentGraph.Component 
+type Component = ComponentGraph.Component;
 
 //A bridge between any module that implements the COMPONENT signature from ReScript-land
 //and a ComponentGraph component.
@@ -75,7 +72,9 @@ function HolComp(RComp : any) {
 
 window.localStorage.clear()
 ComponentGraph.setup({
-	"hol-comp": HolComp(AxiomS),
-	"hol-config":HolComp(ConfS),
-	"hol-proof": HolComp(TheoremS)
-});
+  "hol-comp": HolComp(AxiomS),
+  "hol-config": HolComp(ConfS),
+  "hol-proof": HolComp(TheoremS),
+  "hol-string": HolComp(AxiomStr),
+  "hol-string-proof": HolComp(TheoremStr),
+}); //"hol-config": ConfigComponent, "hol-proof":ProofComponent});

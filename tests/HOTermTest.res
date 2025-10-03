@@ -3,7 +3,7 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
-let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
+let testUnify10 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
   let gen = HOTerm.makeGen()
   let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
   let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
@@ -46,9 +46,9 @@ let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=f
     )
   }
 }
-let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
-  testUnify0(t, at, bt, ~subst?, ~msg?, ~reduce)
-  testUnify0(t, bt, at, ~subst?, ~msg?, ~reduce)
+let testUnify1 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
+  testUnify10(t, at, bt, ~subst?, ~msg?, ~reduce)
+  testUnify10(t, bt, at, ~subst?, ~msg?, ~reduce)
 }
 zoraBlock("parse symbol", t => {
   t->block("single char", t => t->Util.testParse("x", Symbol({name: "x"})))
@@ -135,28 +135,28 @@ zoraBlock("unify test", t => {
   t->block("symbols", t => {
     let x = "x"
     let y = "y"
-    t->testUnify(x, x)
-    t->Util.testNotUnify(y, x)
-    t->Util.testNotUnify(x, y)
+    t->testUnify1(x, x)
+    t->Util.testUnifyFail(y, x)
+    t->Util.testUnifyFail(x, y)
   })
   t->block("applications", t => {
     let ab = "(a b)"
     let cd = "(c d)"
-    t->testUnify(ab, ab)
-    t->testUnify(cd, cd)
-    t->Util.testNotUnify(ab, cd)
-    t->Util.testNotUnify(cd, ab)
+    t->testUnify1(ab, ab)
+    t->testUnify1(cd, cd)
+    t->Util.testUnifyFail(ab, cd)
+    t->Util.testUnifyFail(cd, ab)
   })
   t->block("flex-rigid", t => {
     let x = "?0"
     let y = "y"
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
+    t->testUnify1(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
   t->block("flex-rigid2", t => {
     let x = "(x. ?0 x)"
     let y = "(x. y x)"
     // it is y only after eta reduction
-    t->testUnify(
+    t->testUnify1(
       x,
       y,
       ~reduce=false,
@@ -165,35 +165,32 @@ zoraBlock("unify test", t => {
         Lam({name: "x", body: App({func: Symbol({name: "y"}), arg: Var({idx: 0})})}),
       ),
     )
-    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
+    t->testUnify1(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
   })
   t->block("flex-rigid3", t => {
     let x = "(?0 \\10)"
     let y = "(fst \\10)"
-    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "fst"})))
+    t->testUnify1(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "fst"})))
   })
   t->block("flex-rigid", t => {
     let x = "(?0 \\10)"
     let y = "(r (fst \\10))"
-    t->Util.testUnify(
-      x,
-      y,
-      ~subst=emptySubst->substAdd(
-        0,
-        Lam({
-          name: "x",
-          body: App({
-            func: Symbol({name: "r"}),
-            arg: App({func: Symbol({name: "fst"}), arg: Var({idx: 0})}),
-          }),
+    let subst = emptySubst->substAdd(
+      0,
+      Lam({
+        name: "x",
+        body: App({
+          func: Symbol({name: "r"}),
+          arg: App({func: Symbol({name: "fst"}), arg: Var({idx: 0})}),
         }),
-      ),
+      }),
     )
+    t->Util.testUnify1(x, y, ~subst)
   })
   t->block("flex-rigid-fcu-2", t => {
     let x = "(?0 (fst \\10))"
     let y = "(r (fst (fst \\10)))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -205,7 +202,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid-fcu-3", t => {
     let x = "(?1 (fst \\10) (snd \\1))"
     let y = "(r (q (snd \\1) (fst \\10)))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -217,7 +214,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid-fcu-4", t => {
     let x = "(?1 (fst \\10) \\1)"
     let y = "(r (q (snd \\1) (fst \\10)))"
-    t->Util.testUnify(
+    t->Util.testUnify1(
       x,
       y,
       ~subst=emptySubst->substAdd(
@@ -229,13 +226,13 @@ zoraBlock("unify test", t => {
   t->block("?0 \\0", t => {
     let x = "(?0 \\0)"
     let y = "\\0"
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Lam({name: "x", body: Var({idx: 0})})))
+    t->testUnify1(x, y, ~subst=emptySubst->substAdd(0, Lam({name: "x", body: Var({idx: 0})})))
   })
   t->block("?0 x y", t => {
     let x = "(x. y. ?0 x y)"
     let y = "(x. y. y x)"
     // ?0 = (x. y. \0 \1)
-    t->testUnify(
+    t->testUnify1(
       x,
       y,
       ~reduce=false,
@@ -252,16 +249,16 @@ zoraBlock("unify test", t => {
     let a = "(x. ?0 x)"
     let b = "(x. f (?0 x))"
     // ?0 occurs in the rigid term on the right → should not unify
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
   })
   t->block("no capture", t => {
     let a = "(x. ?0)"
     let b = "(x. x)"
     // Should fail: it cannot capture the bound variable.
-    t->Util.testNotUnify(a, b)
+    t->Util.testUnifyFail(a, b)
   })
   t->block("eta", t => {
-    t->testUnify(
+    t->testUnify1(
       "(x. ?0 x)",
       "a",
       ~reduce=true,
@@ -272,16 +269,16 @@ zoraBlock("unify test", t => {
     let divergent = "((x. x x) (x. x x))"
     let a = "((x. ?0 x) (x. x x))"
     // TODO: should it not unify or not?
-    t->Util.testNotUnify(a, divergent)
+    t->Util.testUnifyFail(a, divergent)
   })
   t->block("dup var", t => {
     let a = "(?0 \\0 \\0)"
     let b = "\\0"
-    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. \\0)")))
+    t->testUnify1(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. \\0)")))
   })
   // Yokoyama et al.'s example in A Functional Implementation of  Function-as-Constructor Higher-Order Unification  Makoto Hamana1
   t->block("break global resctriction", t => {
-    t->testUnify(
+    t->testUnify1(
       "(x. y. ?0 (c x) (c y))",
       "(x. y. c (?1 x y))",
       ~reduce=true,
@@ -291,7 +288,7 @@ zoraBlock("unify test", t => {
     )
   })
   t->block("violate global restriction only", t => {
-    t->testUnify(
+    t->testUnify1(
       "(l. (?0 (fst l)))",
       "(l. (snd (?1 (cons (fst l) (snd l)))))",
       ~reduce=true,
@@ -303,6 +300,6 @@ zoraBlock("unify test", t => {
   t->block("violate local restriction", t => {
     let a = "(?0 (fst l) l)"
     let b = "(cons l)"
-    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. cons x)")))
+    t->testUnify1(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. cons x)")))
   })
 })
