@@ -22,7 +22,7 @@ let substitute = ((term, judge): t, sub) => {
   (StringTerm.substitute(term, stringSub), SExp.substitute(judge, judgeSub))
 }
 
-let substituteSubstVal = (s: substCodom, subst: subst) => {
+let substituteSubstCodom = (s: substCodom, subst: subst) => {
   let (stringSub, judgeSub) = splitSub(subst)
   switch s {
   | StringV(t) => StringV(StringTerm.substitute(t, stringSub))
@@ -63,7 +63,7 @@ let upshift = ((t, j): t, amount: int, ~from: int=0) => (
   SExp.upshift(j, amount, ~from),
 )
 
-let upshiftSubstVal = (v: substCodom, amount: int, ~from: int=0) =>
+let upshiftSubstCodom = (v: substCodom, amount: int, ~from: int=0) =>
   switch v {
   | StringV(t) => StringV(StringTerm.upshift(t, amount, ~from))
   | SExpV(j) => SExpV(SExp.upshift(j, amount, ~from))
@@ -77,9 +77,9 @@ let parse = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
 
 // HACK: this does work due to the hacky string-sexp conversion we have inplace with substitutions,
 // but a different solution would be preferable
-let placeSubstVal = (x: int, ~scope: array<string>) => StringV(StringTerm.place(x, ~scope))
+let placeSubstCodom = (x: int, ~scope: array<string>) => StringV(StringTerm.place(x, ~scope))
 
-let parseSubstVal = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
+let parseSubstCodom = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
   switch StringTerm.parse(str, ~scope, ~gen?) {
   | Ok(t, str) => Ok(StringV(t), str)
   | Error(stringE) =>
@@ -95,7 +95,7 @@ let parseSubstVal = (str: string, ~scope: array<StringTerm.meta>, ~gen=?) => {
 
 let prettyPrint = ((t, j): t, ~scope: array<StringTerm.meta>) =>
   `${StringTerm.prettyPrint(t, ~scope)} ${SExp.prettyPrint(j, ~scope)}`
-let prettyPrintSubstVal = (v: substCodom, ~scope: array<StringTerm.meta>) =>
+let prettyPrintSubstCodom = (v: substCodom, ~scope: array<StringTerm.meta>) =>
   switch v {
   | StringV(t) => StringTerm.prettyPrint(t, ~scope)
   | SExpV(t) => SExp.prettyPrint(t, ~scope)

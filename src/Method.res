@@ -52,7 +52,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   let substitute = (it: t<'a>, subst: Judgment.subst) => {
     {
       ruleName: it.ruleName,
-      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstVal(subst)),
+      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstCodom(subst)),
       subgoals: it.subgoals,
     }
   }
@@ -64,7 +64,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     ~indentation=0,
     ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
   ) => {
-    let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstVal(t, ~scope))
+    let args = it.instantiation->Array.map(t => Judgment.prettyPrintSubstCodom(t, ~scope))
     "by ("
     ->String.concat(Array.join([it.ruleName]->Array.concat(args), " "))
     ->String.concat(") {")
@@ -91,7 +91,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Judgment.parseSubstVal(cur.contents, ~scope, ~gen)
+            it := Judgment.parseSubstCodom(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -231,7 +231,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     {
       ruleName: it.ruleName,
       elimName: it.elimName,
-      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstVal(subst)),
+      instantiation: it.instantiation->Array.map(t => t->Judgment.substituteSubstCodom(subst)),
       subgoals: it.subgoals,
     }
   }
@@ -249,7 +249,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Judgment.parseSubstVal(cur.contents, ~scope, ~gen)
+            it := Judgment.parseSubstCodom(cur.contents, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn

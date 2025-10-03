@@ -2,12 +2,13 @@ open Signatures
 
 module Make = (Term: TERM): (JUDGMENT with module Term := Term and type t := Term.t) => {
   include Term
+  module Term = Term
   type substCodom = Term.t
-  let prettyPrintSubstVal = Term.prettyPrint
-  let parseSubstVal = Term.parse
-  let placeSubstVal = Term.place
-  let upshiftSubstVal = Term.upshift
-  let substituteSubstVal = Term.substitute
+  let prettyPrintSubstCodom = Term.prettyPrint
+  let parseSubstCodom = Term.parse
+  let placeSubstCodom = Term.place
+  let upshiftSubstCodom = Term.upshift
+  let substituteSubstCodom = Term.substitute
 }
 
 module SExpJ = {

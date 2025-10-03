@@ -35,21 +35,21 @@ module type JUDGMENT = {
   let mapSubst: (subst, substCodom => substCodom) => subst
   let mergeSubsts: (subst, subst) => subst
   let substitute: (t, subst) => t
-  let substituteSubstVal: (substCodom, subst) => substCodom
+  let substituteSubstCodom: (substCodom, subst) => substCodom
   let equivalent: (t, t) => bool
   let unify: (t, t, ~gen: Term.gen=?) => Seq.t<subst>
   let substDeBruijn: (t, array<substCodom>, ~from: int=?) => t
   let upshift: (t, int, ~from: int=?) => t
-  let upshiftSubstVal: (substCodom, int, ~from: int=?) => substCodom
-  let placeSubstVal: (schematic, ~scope: array<meta>) => substCodom
+  let upshiftSubstCodom: (substCodom, int, ~from: int=?) => substCodom
+  let placeSubstCodom: (schematic, ~scope: array<meta>) => substCodom
   let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
-  let parseSubstVal: (
+  let parseSubstCodom: (
     string,
     ~scope: array<Term.meta>,
     ~gen: Term.gen=?,
   ) => result<(substCodom, string), string>
   let prettyPrint: (t, ~scope: array<Term.meta>) => string
-  let prettyPrintSubstVal: (substCodom, ~scope: array<Term.meta>) => string
+  let prettyPrintSubstCodom: (substCodom, ~scope: array<Term.meta>) => string
 }
 
 module type TERM_VIEW = {

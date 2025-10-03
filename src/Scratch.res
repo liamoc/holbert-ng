@@ -1,4 +1,4 @@
-module HOTermJ = JudgmentFunctor.HOTermJ
+module HOTermJ = TermAsJudgment.HOTermJ
 module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTermJ, HOTermJView))
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,
