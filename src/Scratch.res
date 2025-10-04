@@ -1,4 +1,5 @@
 module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTerm, HOTermJView))
+module InductiveS = Editable.TextArea(InductiveSet.Make(HOTerm, HOTerm, HOTermJView))
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,
   HOTerm,

@@ -15,6 +15,7 @@ include Signatures.TERM
 
 let emptySubst: subst
 let strip: t => (t, array<t>)
+let app: (t, array<t>) => t
 // exposed for testing purposes
 exception UnifyFail(string)
 let substAdd: (subst, schematic, t) => subst

@@ -6,3 +6,9 @@ let arrayWithIndex = (arr: array<React.element>) => {
 }
 exception Unreachable(string)
 exception Err(string)
+let mustFindIndex = (arr, f) => {
+  switch Array.findIndex(arr, f) {
+  | -1 => raise(Unreachable("Element not found"))
+  | i => i
+  }
+}
