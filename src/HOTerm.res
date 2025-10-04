@@ -208,22 +208,19 @@ let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
   | Unallowed => Unallowed
   }
 // beta reduced and eta reduced
-let rec reduceFull = (term: t, subst: subst): t => {
+let rec reduce = (term: t): t => {
   switch term {
-  | Schematic({schematic}) if subst->substHas(schematic) =>
-    let found = subst->substGet(schematic)->Option.getExn
-    reduceFull(found, subst)
-  | Lam({body: App({func, arg: Var({idx: 0})})}) if !(func->freeVarsContains(subst, 0)) =>
-    reduceFull(downshift(func, 1), subst)
+  | Lam({body: App({func, arg: Var({idx: 0})})}) if !(func->freeVarsContains(emptySubst, 0)) =>
+    reduce(downshift(func, 1))
   | App({func, arg}) =>
-    switch reduceFull(func, subst) {
-    | Lam({body}) => reduceFull(substDeBruijn(body, [arg]), subst)
-    | func => App({func, arg: reduceFull(arg, subst)})
+    switch reduce(func) {
+    | Lam({body}) => reduce(substDeBruijn(body, [arg]))
+    | func => App({func, arg: reduce(arg)})
     }
   | Lam({name, body}) =>
     Lam({
       name,
-      body: reduceFull(body, subst),
+      body: reduce(body),
     })
   | Symbol(_) | Var(_) | Schematic(_) => term
 
@@ -231,7 +228,7 @@ let rec reduceFull = (term: t, subst: subst): t => {
   }
 }
 let reduceSubst = (subst: subst): subst => {
-  subst->Belt.Map.Int.map(x => reduceFull(x, subst))
+  subst->Belt.Map.Int.map(x => reduce(substitute(x, subst)))
 }
 let rec lams = (amount: int, term: t): t => {
   assert(amount >= 0)

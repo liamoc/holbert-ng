@@ -24,6 +24,7 @@ let makeSubst = () => {
 let equivalent = (a: t, b: t) => {
   a == b
 }
+let reduce = (term: t) => term
 let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
   switch it {
   | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)
