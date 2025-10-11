@@ -5,8 +5,13 @@ module InductiveS = Editable.TextArea(InductiveSet.Make(HOTerm, HOTermJ, HOTermJ
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   HOTerm,
   HOTermJ,
-  MethodView.DerivationView(HOTerm, HOTermJ),
-  MethodView.LemmaView(HOTerm, HOTermJ, HOTermJView),
+  MethodView.CombineMethodView(
+    HOTerm,
+    HOTermJ,
+    MethodView.DerivationView(HOTerm, HOTermJ),
+    MethodView.LemmaView(HOTerm, HOTermJ, HOTermJView),
+  ),
+  MethodView.EliminationView(HOTerm, HOTermJ),
 )
 module TheoremS = Editable.TextArea(
   Theorem.Make(HOTerm, HOTermJ, HOTermJView, DerivationsOrLemmasView),

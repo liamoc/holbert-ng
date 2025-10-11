@@ -184,7 +184,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   }
   let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
     let newsgs = it.subgoals->Array.copy
-    newsgs->Array.set(key,  f(newsgs[key]->Option.getExn))
+    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
     {...it, subgoals: newsgs}
   }
 }
@@ -348,15 +348,19 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ctx.facts
       ->Dict.toArray
       ->Array.filter(((_, r)) =>
-        r.premises->Array.length > 0 && (r.premises[0]->Option.getExn).premises->Array.length == 0
+        r.premises->Array.length > 0 && {
+            let fst = r.premises[0]->Option.getExn
+            fst.premises->Array.length == 0 && fst.vars->Array.length == 0
+          }
       )
     let possibleElims =
-      ctx.facts->Dict.toArray->Array.filter(((_, r)) => r.premises->Array.length == 0)
+      ctx.facts
+      ->Dict.toArray
+      ->Array.filter(((_, r)) => r.premises->Array.length == 0 && r.vars->Array.length == 0)
     possibleRules->Array.forEach(((ruleName, rule)) => {
       possibleElims->Array.forEach(((elimName, elim)) => {
         let ruleInsts = rule->Rule.schematise(gen, ~scope=ctx.fixes)
-        let elimInsts = elim->Rule.schematise(gen, ~scope=ctx.fixes)
-        let (rule', elim) = (rule->Rule.instantiate(ruleInsts), elim->Rule.instantiate(elimInsts))
+        let rule' = rule->Rule.instantiate(ruleInsts)
         Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)->Seq.forEach(
           elimSub => {
             let rule'' = rule'->Rule.substituteBare(elimSub)

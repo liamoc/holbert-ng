@@ -331,13 +331,23 @@
       --------------------------- E-ind
       (P n)    </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
-    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
-    a.
-      (Nat a)
-      ------- 
-      (Nat (S (S a)))
-    
-    a. asm |- ?
+    <!-- <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat"> -->
+    <!-- n. -->
+    <!--   (Even (S (S n))) -->
+    <!--   ---------------  -->
+    <!--   (Even n) -->
+    <!---->
+    <!-- n. asm |- ? -->
+    <!-- </hol-proof> -->
+    <hol-proof id="index.html/prooftest2" deps="index.html/myconfig index.html/baz index.html/nat">
+      x.y.
+        (/\ x y)
+        -------- 
+        (/\ y x)
+
+      x.y. asm |- by (AI ((x. x. \1) y x) ((x. x. x) y x)) {
+          |- ?
+          |- ?}
     </hol-proof>
     <h1>String</h1>
     <h2>Basic</h2>
