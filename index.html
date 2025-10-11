@@ -329,15 +329,25 @@
       (P 0)
       [k. (P k) |- (P (S (S k)))]
       --------------------------- E-ind
-      (P n)    </hol-comp>
+      (P n)
+
+    a.
+      ---- refl
+      (= a a)
+    
+    a. b. f.
+      (= a b) (f a)
+      -------- eq-ap
+      (f b)
+    </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
     <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
-    a.
-      (Nat a)
+    a. b. f.
+      (= a b)
       ------- 
-      (Nat (S (S a)))
+      (= (f a) (f b))
     
-    a. asm |- ?
+    a. b. f. asm |- ?
     </hol-proof>
     <h1>String</h1>
     <h2>Basic</h2>
