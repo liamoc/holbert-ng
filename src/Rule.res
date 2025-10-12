@@ -11,7 +11,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     {
       vars: rule.vars,
       premises: rule.premises->Array.map(premise => premise->substitute(subst')),
-      conclusion: rule.conclusion->Judgment.substitute(subst'),
+      conclusion: rule.conclusion->Judgment.substitute(subst')->Judgment.reduce,
     }
   }
   let rec substDeBruijn = (rule: t, substs: array<Judgment.substCodom>, ~from: int=0) => {
@@ -39,7 +39,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let substituteBare = (rule: bare, subst: Judgment.subst) => {
     {
       premises: rule.premises->Array.map(premise => premise->substitute(subst)),
-      conclusion: rule.conclusion->Judgment.substitute(subst),
+      conclusion: rule.conclusion->Judgment.substitute(subst)->Judgment.reduce,
     }
   }
   let instantiate = (rule: t, terms: array<Judgment.substCodom>) => {

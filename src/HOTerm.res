@@ -168,6 +168,26 @@ let substAdd = (subst: subst, schematic: schematic, term: t) => {
   assert(subst->Belt.Map.Int.has(schematic) == false)
   subst->Belt.Map.Int.set(schematic, term)
 }
+let rec substitute = (term: t, subst: subst) =>
+  switch term {
+  | Schematic({schematic, _}) =>
+    switch Belt.Map.Int.get(subst, schematic) {
+    | None => term
+    | Some(found) => found
+    }
+  | Lam({name, body}) =>
+    Lam({
+      name,
+      // upshift is not needed for pattern unification, but it is safer to have upshift here
+      body: substitute(body, subst->Belt.Map.Int.map(t => upshift(t, 1))),
+    })
+  | App({func, arg}) =>
+    App({
+      func: substitute(func, subst),
+      arg: substitute(arg, subst),
+    })
+  | Var(_) | Unallowed | Symbol(_) => term
+  }
 
 // TODO: check how will this interact with meta variables (schematics) and check if it is needed to have a subst parameter - it should not be needed for subst produced by pattern unification
 let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
@@ -216,30 +236,6 @@ let rec reduce = (term: t): t => {
 
   | Unallowed => Unallowed
   }
-}
-let substitute = (term: t, subst: subst) => {
-  let rec inner = (term, subst) =>
-    switch term {
-    | Schematic({schematic, _}) =>
-      switch Belt.Map.Int.get(subst, schematic) {
-      | None => term
-      | Some(found) => found
-      }
-    | Lam({name, body}) =>
-      Lam({
-        name,
-        // upshift is not needed for pattern unification, but it is safer to have upshift here
-        body: inner(body, subst->Belt.Map.Int.map(t => upshift(t, 1))),
-      })
-    | App({func, arg}) =>
-      App({
-        func: inner(func, subst),
-        arg: inner(arg, subst),
-      })
-    | Var(_) | Unallowed | Symbol(_) => term
-    }
-
-  inner(term, subst)->reduce
 }
 let reduceSubst = (subst: subst): subst => {
   subst->Belt.Map.Int.map(x => reduce(substitute(x, subst)))
