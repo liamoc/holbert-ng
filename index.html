@@ -488,6 +488,16 @@
       "$s" L
       s. sM |- ?
     </hol-string-proof>
+    <hol-string-proof id="index.html/lexp-mexp" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp index.html/lexp-n">
+      s. "$s" L
+      ----------- mexp-lexp
+      "$s" M
+      s. sL |- elim (L_mutualInduct sL "" "$s" "" "M" "M") {
+        |- by (M-Empty) {}
+        s1.s2. 0 1 2 3 |- elim (M-Juxtapose 2 "$s1" "$s2") {
+            |- by (3) {}}
+        s. 0 1 |- elim (M-Surround 1 "$s") {}}
+    </hol-string-proof>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>
