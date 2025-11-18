@@ -365,7 +365,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       possibleElims->Array.forEach(((elimName, elim)) => {
         let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
         let rule' = rule->Rule.instantiate(ruleInsts)
-        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion)
+        Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
         ->Seq.take(seqSizeLimit)
         ->Seq.forEach(
           elimSub => {

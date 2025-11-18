@@ -5,7 +5,7 @@ module IntCmp = Belt.Id.MakeComparable({
 })
 
 type rec t =
-  | Symbol({name: string})
+  | Symbol({name: string, constructor: bool})
   | Var({idx: int})
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
@@ -369,12 +369,12 @@ let flexflex = (
   subst: subst,
   ~gen: option<gen>,
 ): subst => {
+  if gen->Option.isNone {
+    raise(UnifyFail("no gen provided"))
+  }
   if sa == sb {
     if xs->Array.length != ys->Array.length {
       raise(UnifyFail("flexible schematics have different number of arguments"))
-    }
-    if gen->Option.isNone {
-      raise(UnifyFail("no gen provided"))
     }
     let len = xs->Array.length
     let h = Schematic({schematic: fresh(Option.getExn(gen))})
@@ -516,7 +516,12 @@ let rec stripLam = (it: t): (array<string>, t) =>
   }
 let rec prettyPrint = (it: t, ~scope: array<string>) =>
   switch it {
-  | Symbol({name}) => name
+  | Symbol({name, constructor}) =>
+    if constructor {
+      String.concat("@", name)
+    } else {
+      name
+    }
   | Var({idx}) => prettyPrintVar(idx, scope)
   | Schematic({schematic}) => "?"->String.concat(String.make(schematic))
   | Lam(_) =>
@@ -543,7 +548,15 @@ let prettyPrintSubst = (sub: subst, ~scope: array<string>) =>
 let symbolRegexpString = "^([^\\s()]+)"
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
 exception ParseError(string)
-type token = LParen | RParen | VarT(int) | SchematicT(int) | AtomT(string) | NameT(string) | EOF
+type token =
+  | LParen
+  | RParen
+  | VarT(int)
+  | SchematicT(int)
+  | AtomT(string)
+  | ConsT(string)
+  | NameT(string)
+  | EOF
 let varRegexpString = "^\\\\([0-9]+)"
 let schematicRegexpString = "^\\?([0-9]+)"
 let tokenize = (str0: string): (token, string) => {
@@ -583,6 +596,16 @@ let tokenize = (str0: string): (token, string) => {
           }
         }
       }
+    | "@" =>
+      let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
+      switch re->RegExp.exec(rest()) {
+      | None => raise(ParseError("invalid symbol"))
+      | Some(res) =>
+        switch RegExp.Result.matches(res) {
+        | [n] => (ConsT(n), String.sliceToEnd(rest(), ~start=RegExp.lastIndex(re)))
+        | _ => raise(ParseError("invalid symbol"))
+        }
+      }
     | _ => {
         let reName = RegExp.fromStringWithFlags(nameRES, ~flags="y")
         switch reName->RegExp.exec(str) {
@@ -608,7 +631,7 @@ let tokenize = (str0: string): (token, string) => {
 }
 type rec simple =
   | ListS({xs: array<simple>})
-  | AtomS({name: string})
+  | AtomS({name: string, constructor: bool})
   | VarS({idx: int})
   | SchematicS({schematic: int})
   | LambdaS({name: string, body: simple})
@@ -636,7 +659,8 @@ let rec parseSimple = (str: string): (simple, string) => {
   | RParen => raise(ParseError("unexpected right parenthesis"))
   | VarT(idx) => (VarS({idx: idx}), rest)
   | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
-  | AtomT(name) => (AtomS({name: name}), rest)
+  | AtomT(name) => (AtomS({name, constructor: false}), rest)
+  | ConsT(name) => (AtomS({name, constructor: true}), rest)
   | NameT(name) => {
       let (result, rest1) = parseSimple(rest)
       (LambdaS({name, body: result}), rest1)
@@ -679,12 +703,14 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
         ->Array.reduce(ts[0]->Option.getExn, (acc, x) => App({func: acc, arg: x}))
       }
     }
-  | AtomS({name}) =>
-    if env->Map.has(name) {
+  | AtomS({name, constructor}) =>
+    if constructor {
+      Symbol({name, constructor: true})
+    } else if env->Map.has(name) {
       let idx = env->Map.get(name)->Option.getExn
       Var({idx: idx})
     } else {
-      Symbol({name: name})
+      Symbol({name, constructor: false})
     }
   | VarS({idx}) => Var({idx: idx})
   | SchematicS({schematic}) =>

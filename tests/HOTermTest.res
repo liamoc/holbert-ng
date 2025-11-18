@@ -51,8 +51,8 @@ let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=fa
   testUnify0(t, bt, at, ~subst?, ~msg?, ~reduce)
 }
 zoraBlock("parse symbol", t => {
-  t->block("single char", t => t->Util.testParse("x", Symbol({name: "x"})))
-  t->block("multi char", t => t->Util.testParse("xyz", Symbol({name: "xyz"})))
+  t->block("single char", t => t->Util.testParse("x", Symbol({name: "x", constructor: false})))
+  t->block("multi char", t => t->Util.testParse("xyz", Symbol({name: "xyz", constructor: false})))
 })
 
 zoraBlock("parse var", t => {
@@ -66,14 +66,23 @@ zoraBlock("parse schematic", t => {
 
 zoraBlock("parse application", t => {
   t->block("multiple", t => {
-    t->Util.testParse("(a b)", App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})}))
+    t->Util.testParse(
+      "(a b)",
+      App({
+        func: Symbol({name: "a", constructor: false}),
+        arg: Symbol({name: "b", constructor: false}),
+      }),
+    )
   })
   t->block("multiple more", t => {
     t->Util.testParse(
       "(a b c)",
       App({
-        func: App({func: Symbol({name: "a"}), arg: Symbol({name: "b"})}),
-        arg: Symbol({name: "c"}),
+        func: App({
+          func: Symbol({name: "a", constructor: false}),
+          arg: Symbol({name: "b", constructor: false}),
+        }),
+        arg: Symbol({name: "c", constructor: false}),
       }),
     )
   })
@@ -81,7 +90,7 @@ zoraBlock("parse application", t => {
     t->Util.testParse(
       "(a \\1 ?1)",
       App({
-        func: App({func: Symbol({name: "a"}), arg: Var({idx: 1})}),
+        func: App({func: Symbol({name: "a", constructor: false}), arg: Var({idx: 1})}),
         arg: Schematic({schematic: 1}),
       }),
     )
@@ -114,6 +123,9 @@ zoraBlock("parse lambda", t => {
       Lam({name: "x", body: App({func: Var({idx: 0}), arg: Var({idx: 0})})}),
     )
   })
+  t->block("constructor", t => {
+    t->Util.testParse("@cons", Symbol({name: "cons", constructor: true}))
+  })
   // TODO: test if remaining strings are returned correctly
 })
 
@@ -121,6 +133,7 @@ zoraBlock("parse and prettyprint", t => {
   t->block("examples", t => {
     t->Util.testParsePrettyPrint("\\1", "\\1")
     t->Util.testParsePrettyPrint("?1", "?1")
+    t->Util.testParsePrettyPrint("@cons", "@cons")
     t->Util.testParsePrettyPrint("(x. x)", "(x. x)")
     t->Util.testParsePrettyPrint("(x. x. \\0)", "(x. x. x)")
     t->Util.testParsePrettyPrint("(x. x. \\1)", "(x. x. \\1)")
@@ -150,7 +163,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid", t => {
     let x = "?0"
     let y = "y"
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
+    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y", constructor: false})))
   })
   t->block("flex-rigid2", t => {
     let x = "(x. ?0 x)"
@@ -162,15 +175,28 @@ zoraBlock("unify test", t => {
       ~reduce=false,
       ~subst=emptySubst->substAdd(
         0,
-        Lam({name: "x", body: App({func: Symbol({name: "y"}), arg: Var({idx: 0})})}),
+        Lam({
+          name: "x",
+          body: App({func: Symbol({name: "y", constructor: false}), arg: Var({idx: 0})}),
+        }),
       ),
     )
-    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "y"})))
+    t->testUnify(
+      x,
+      y,
+      ~reduce=true,
+      ~subst=emptySubst->substAdd(0, Symbol({name: "y", constructor: false})),
+    )
   })
   t->block("flex-rigid3", t => {
     let x = "(?0 \\10)"
     let y = "(fst \\10)"
-    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, Symbol({name: "fst"})))
+    t->testUnify(
+      x,
+      y,
+      ~reduce=true,
+      ~subst=emptySubst->substAdd(0, Symbol({name: "fst", constructor: false})),
+    )
   })
   t->block("flex-rigid", t => {
     let x = "(?0 \\10)"
@@ -183,8 +209,8 @@ zoraBlock("unify test", t => {
         Lam({
           name: "x",
           body: App({
-            func: Symbol({name: "r"}),
-            arg: App({func: Symbol({name: "fst"}), arg: Var({idx: 0})}),
+            func: Symbol({name: "r", constructor: false}),
+            arg: App({func: Symbol({name: "fst", constructor: false}), arg: Var({idx: 0})}),
           }),
         }),
       ),
@@ -265,7 +291,7 @@ zoraBlock("unify test", t => {
       "(x. ?0 x)",
       "a",
       ~reduce=true,
-      ~subst=emptySubst->substAdd(0, Symbol({name: "a"})),
+      ~subst=emptySubst->substAdd(0, Symbol({name: "a", constructor: false})),
     )
   })
   t->block("divergent", t => {
@@ -278,6 +304,11 @@ zoraBlock("unify test", t => {
     let a = "(?0 \\0 \\0)"
     let b = "\\0"
     t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. \\0)")))
+  })
+  t->block("dup var 2", t => {
+    let a = "(k. ?0 k k)"
+    let b = "(k. G k)"
+    t->testUnify(a, b, ~subst=emptySubst->substAdd(0, t->Util.parse("(x. x. G x)")))
   })
   // Yokoyama et al.'s example in A Functional Implementation of  Function-as-Constructor Higher-Order Unification  Makoto Hamana1
   t->block("break global resctriction", t => {

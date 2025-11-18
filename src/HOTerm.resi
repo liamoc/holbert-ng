@@ -1,5 +1,5 @@
 type rec t =
-  | Symbol({name: string})
+  | Symbol({name: string, constructor: bool})
   | Var({idx: int})
   | Schematic({schematic: int})
   | Lam({name: string, body: t})
