@@ -46,7 +46,8 @@ module Make = (
                     props.onChange(
                       Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
                       subst,
-                    )}>
+                    )}
+                >
                   {React.string(str)}
                 </button>
               })

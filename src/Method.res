@@ -112,7 +112,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
                     }
-                  | Error(e) => raise(InternalParseError(e))
+                  | Error(e) => throw(InternalParseError(e))
                   }
                 }
                 if cur.contents->String.get(0) == Some("}") {
@@ -276,7 +276,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
                     }
-                  | Error(e) => raise(InternalParseError(e))
+                  | Error(e) => throw(InternalParseError(e))
                   }
                 }
                 if cur.contents->String.get(0) == Some("}") {
@@ -614,7 +614,7 @@ module MakeRewriteHOTerm = (
 
               try {
                 switch subparser(cur.contents, ~scope, ~gen) {
-                | Error(e) => raise(InternalParseError(e))
+                | Error(e) => throw(InternalParseError(e))
                 | Ok((subgoal, rest2)) => {
                     cur := String.trim(rest2)
 

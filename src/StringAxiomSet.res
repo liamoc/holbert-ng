@@ -49,12 +49,12 @@ let derive = (name: string, rules: array<Rule.t>): Rule.t => {
     let (aIdx, bIdx, pIdx) = (aIdx + n, bIdx + n, pIdx + n)
     let inductionHyps =
       rule.premises
-      ->Array.filter(r => r.conclusion->snd == Symbol({name: name}))
+      ->Array.filter(r => r.conclusion->Pair.second == Symbol({name: name}))
       ->Array.map(r => replaceJudgeRHS(r, aIdx, bIdx, pIdx))
     {
       vars: rule.vars,
       premises: rule.premises->Array.concat(inductionHyps),
-      conclusion: (surround(rule.conclusion->fst, aIdx, bIdx), Var({idx: pIdx})),
+      conclusion: (surround(rule.conclusion->Pair.first, aIdx, bIdx), Var({idx: pIdx})),
     }
   }
   {
@@ -105,7 +105,7 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
   getBase(str)->Result.map(raw => {
     let grouped: dict<array<Rule.t>> = Dict.make()
     raw->Dict.forEach(rule =>
-      switch rule.conclusion->snd {
+      switch rule.conclusion->Pair.second {
       | Symbol({name: a}) =>
         switch grouped->Dict.get(a) {
         | None => grouped->Dict.set(a, [rule])
@@ -135,7 +135,8 @@ let make = props => {
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-      )}>
+      )}
+    >
       {content
       ->Dict.toArray
       ->Array.mapWithIndex(((n, r), i) =>
@@ -143,7 +144,8 @@ let make = props => {
           rule={r}
           scope={[]}
           key={String.make(i)}
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+        >
           {React.string(n)}
         </RuleView>
       )

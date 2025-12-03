@@ -54,14 +54,16 @@ module Make = (
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-      )}>
+      )}
+    >
       {Dict.toArray(props.content)
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
           scope={[]}
           key={String.make(i)}
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+        >
           {React.string(n)}
         </RuleView>
       )

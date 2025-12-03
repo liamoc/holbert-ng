@@ -18,7 +18,7 @@ module Make = (
     onChange: (state, ~exports: Ports.t=?) => unit,
   }
 
-  type constructorGroup = {
+  type predicateGroup = {
     name: string,
     arity: int,
     rules: array<(string, Rule.t)>,
@@ -26,7 +26,7 @@ module Make = (
 
   let makeKey = (name, arity) => name ++ "§" ++ Int.toString(arity)
 
-  let extractConstructorSignature = (rule: Rule.t): option<(string, int)> => {
+  let extractPredicateSignature = (rule: Rule.t): option<(string, int)> => {
     let (head, args) = HOTerm.strip(rule.conclusion)
     switch head {
     | Symbol({name}) => Some((name, Array.length(args)))
@@ -34,13 +34,13 @@ module Make = (
     }
   }
 
-  let groupByConstructor = (rules: dict<Rule.t>): array<constructorGroup> =>
+  let groupByPredicate = (rules: dict<Rule.t>): array<predicateGroup> =>
     rules
     ->Dict.toArray
     ->Array.filterMap(((name, rule)) =>
-      extractConstructorSignature(rule)->Option.map(sig => (name, rule, sig))
+      extractPredicateSignature(rule)->Option.map(sig => (name, rule, sig))
     )
-    // Only allow type constructors with arity 1
+    // Only allow predicates with arity 1
     ->Array.filter(((_, _, (_cname, arity))) => arity == 1)
     ->Array.reduce(Dict.make(), (acc, (name, rule, (cname, arity))) => {
       let key = makeKey(cname, arity)
@@ -48,15 +48,12 @@ module Make = (
       acc
     })
     ->Dict.valuesToArray
-    ->Array.map(constructors => {
-      let (_, firstRule) = constructors[0]->Option.getExn
-      let (name, arity) = extractConstructorSignature(firstRule)->Option.getExn
-      {name, arity, rules: constructors}
+    ->Array.map(predicates => {
+      let (_, firstRule) = predicates[0]->Option.getExn
+      let (name, arity) = extractPredicateSignature(firstRule)->Option.getExn
+      {name, arity, rules: predicates}
     })
-  let generateInductionRule = (
-    group: constructorGroup,
-    allGroups: array<constructorGroup>,
-  ): Rule.t => {
+  let generateInductionRule = (group: predicateGroup, allGroups: array<predicateGroup>): Rule.t => {
     let {name: str, arity: i} = group
     let numFormers = Array.length(allGroups)
     let groupIndex = mustFindIndex(allGroups, g => g.name == str && g.arity == i)
@@ -91,7 +88,7 @@ module Make = (
       let (conclusionHead, conclusionArgs) = HOTerm.strip(constructorRule.conclusion)
       let typeIndex = switch conclusionHead {
       | Symbol({name}) => findFormerIndex(name, Array.length(conclusionArgs))
-      | _ => raise(Unreachable("Constructor conclusion must have a Symbol head"))
+      | _ => throw(Unreachable("Constructor conclusion must have a Symbol head"))
       }
 
       {
@@ -134,10 +131,10 @@ module Make = (
     }
   }
 
-  let isSelfReference = (group: constructorGroup, (name, arity)): bool =>
+  let isSelfReference = (group: predicateGroup, (name, arity)): bool =>
     name == group.name && arity == group.arity
 
-  let findDependencies = (group: constructorGroup): array<(string, int)> =>
+  let findDependencies = (group: predicateGroup): array<(string, int)> =>
     group.rules
     ->Array.flatMap(((_name, rule)) => rule.premises->Array.filterMap(extractInductiveType))
     ->Array.filter(dep => !isSelfReference(group, dep))
@@ -145,7 +142,7 @@ module Make = (
   let rec collectReachable = (
     toVisit: array<(string, int)>,
     visited: Belt.Set.t<string, StringCmp.identity>,
-    allGroups: array<constructorGroup>,
+    allGroups: array<predicateGroup>,
   ): Belt.Set.t<string, StringCmp.identity> =>
     switch toVisit {
     | [] => visited
@@ -168,9 +165,9 @@ module Make = (
     }
 
   let findMutuallyInductiveComponent = (
-    targetGroup: constructorGroup,
-    allGroups: array<constructorGroup>,
-  ): array<constructorGroup> => {
+    targetGroup: predicateGroup,
+    allGroups: array<predicateGroup>,
+  ): array<predicateGroup> => {
     let reachableKeys = collectReachable(
       [(targetGroup.name, targetGroup.arity)],
       Belt.Set.make(~id=module(StringCmp)),
@@ -179,18 +176,18 @@ module Make = (
     allGroups->Array.filter(g => Belt.Set.has(reachableKeys, makeKey(g.name, g.arity)))
   }
 
-  let generateCasesRule = (group: constructorGroup): Rule.t => {
+  let generateCasesRule = (group: predicateGroup): Rule.t => {
     let {name: str, arity: _i} = group
 
-    let caseSubgoal = ((_constructorName: string, constructorRule: Rule.t)): Rule.t => {
-      let offset = Array.length(constructorRule.vars)
+    let caseSubgoal = ((_constructorName: string, predicateRule: Rule.t)): Rule.t => {
+      let offset = Array.length(predicateRule.vars)
 
-      // Extract the argument from the constructor conclusion
+      // Extract the argument from the predicate conclusion
       // e.g., from (Nat 0) extract 0, from (Nat (S n)) extract (S n)
-      let (_head, args) = HOTerm.strip(constructorRule.conclusion)
-      let constructorArg = switch args[0] {
+      let (_head, args) = HOTerm.strip(predicateRule.conclusion)
+      let predicateArg = switch args[0] {
       | Some(arg) => arg
-      | None => raise(Unreachable("Constructor conclusion must have one argument"))
+      | None => throw(Unreachable("Predicate conclusion must have one argument"))
       }
 
       let equalityPremise = {
@@ -198,13 +195,13 @@ module Make = (
         premises: [],
         conclusion: HOTerm.app(
           HOTerm.Symbol({name: "=", constructor: false}),
-          [HOTerm.Var({idx: offset}), constructorArg],
+          [HOTerm.Var({idx: offset}), predicateArg],
         ),
       }
 
       {
-        Rule.vars: constructorRule.vars,
-        premises: Array.concat([equalityPremise], constructorRule.premises),
+        Rule.vars: predicateRule.vars,
+        premises: Array.concat([equalityPremise], predicateRule.premises),
         conclusion: HOTerm.Var({idx: offset + 1}),
       }
     }
@@ -230,9 +227,9 @@ module Make = (
 
   let derived = (state: state): state =>
     state
-    ->groupByConstructor
+    ->groupByPredicate
     ->Array.flatMap(group => {
-      let mutualComponent = findMutuallyInductiveComponent(group, groupByConstructor(state))
+      let mutualComponent = findMutuallyInductiveComponent(group, groupByPredicate(state))
       let inductionRule = generateInductionRule(group, mutualComponent)
       let casesRule = generateCasesRule(group)
       [("§induction-" ++ group.name, inductionRule), ("§cases-" ++ group.name, casesRule)]
@@ -279,14 +276,16 @@ module Make = (
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
-      )}>
+      )}
+    >
       {Dict.toArray(props.content->Dict.copy->Dict.assign(derived(props.content)))
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
           scope={[]}
           key={String.make(i)}
-          style={props.imports.ruleStyle->Option.getOr(Hybrid)}>
+          style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+        >
           {React.string(n)}
         </RuleView>
       )

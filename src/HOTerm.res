@@ -102,7 +102,7 @@ let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =
       | Ok(newIdx) =>
         let new = newIdx + from
         if new < 0 {
-          raise(Err("mapbind: negative index"))
+          throw(Err("mapbind: negative index"))
         }
         Var({
           idx: new,
@@ -132,7 +132,7 @@ let mapbind = (term: t, f: int => int, ~from: int=0): t => mapbind0(term, idx =>
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
 let downshift = (term: t, amount: int, ~from: int=1) => {
   if amount > from {
-    raise(Err("downshift amount must be less than from"))
+    throw(Err("downshift amount must be less than from"))
   }
   mapbind(term, idx => idx - amount, ~from)
 }
@@ -333,12 +333,12 @@ let rec proj_allowed = (subst: subst, term: t): bool => {
 let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
   switch strip(devar(subst, term)) {
   | (Lam({name: _, body}), args) if args->Array.length == 0 => proj(subst, body, ~gen)
-  | (Unallowed, _args) => raise(UnifyFail("unallowed"))
+  | (Unallowed, _args) => throw(UnifyFail("unallowed"))
   | (Symbol(_) | Var(_), args) => Array.reduce(args, subst, (acc, a) => proj(acc, a, ~gen))
   | (Schematic({schematic}), args) => {
       assert(!substHas(subst, schematic))
       if gen->Option.isNone {
-        raise(UnifyFail("no gen provided"))
+        throw(UnifyFail("no gen provided"))
       }
       let h = Schematic({schematic: fresh(Option.getExn(gen))})
       subst->substAdd(
@@ -358,7 +358,7 @@ let rec proj = (subst: subst, term: t, ~gen: option<gen>): subst => {
         ),
       )
     }
-  | _ => raise(UnifyFail("not a symbol, var or schematic"))
+  | _ => throw(UnifyFail("not a symbol, var or schematic"))
   }
 }
 let flexflex = (
@@ -370,11 +370,11 @@ let flexflex = (
   ~gen: option<gen>,
 ): subst => {
   if gen->Option.isNone {
-    raise(UnifyFail("no gen provided"))
+    throw(UnifyFail("no gen provided"))
   }
   if sa == sb {
     if xs->Array.length != ys->Array.length {
-      raise(UnifyFail("flexible schematics have different number of arguments"))
+      throw(UnifyFail("flexible schematics have different number of arguments"))
     }
     let len = xs->Array.length
     let h = Schematic({schematic: fresh(Option.getExn(gen))})
@@ -396,7 +396,7 @@ let flexflex = (
 }
 let flexrigid = (sa: schematic, xs: array<t>, b: t, subst: subst, ~gen: option<gen>): subst => {
   if occ(sa, subst, b) {
-    raise(UnifyFail("flexible schematic occurs in rigid term"))
+    throw(UnifyFail("flexible schematic occurs in rigid term"))
   }
   // pattern unification
   // let u = b->mapbind0(bind => idx2(xs, bind))
@@ -412,13 +412,13 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
     if na == nb {
       subst
     } else {
-      raise(UnifyFail("symbols do not match"))
+      throw(UnifyFail("symbols do not match"))
     }
   | (Var({idx: ia}), Var({idx: ib})) =>
     if ia == ib {
       subst
     } else {
-      raise(UnifyFail("variables do not match"))
+      throw(UnifyFail("variables do not match"))
     }
   | (Schematic({schematic: sa}), Schematic({schematic: sb})) if sa == sb => subst
   | (Lam({name: _, body: ba}), Lam({name: _, body: bb})) => unifyTerm(ba, bb, subst, ~gen)
@@ -435,13 +435,13 @@ let rec unifyTerm = (a: t, b: t, subst: subst, ~gen: option<gen>): subst =>
     | ((a, xs), (b, ys)) =>
       switch (a, b) {
       | (Symbol(_) | Var(_), Symbol(_) | Var(_)) => rigidrigid(a, xs, b, ys, subst, ~gen)
-      | _ => raise(UnifyFail("no rules match"))
+      | _ => throw(UnifyFail("no rules match"))
       }
     }
   }
 and unifyArray = (xs: array<t>, ys: array<t>, subst: subst, ~gen: option<gen>): subst => {
   if xs->Array.length != ys->Array.length {
-    raise(UnifyFail("arrays have different lengths"))
+    throw(UnifyFail("arrays have different lengths"))
   }
   Belt.Array.zip(xs, ys)->Belt.Array.reduce(subst, (acc, (x, y)) => unifyTerm(x, y, acc, ~gen))
 }
@@ -454,10 +454,10 @@ and rigidrigid = (
   ~gen: option<gen>,
 ): subst => {
   if !equivalent(a, b) {
-    raise(UnifyFail("rigid terms do not match"))
+    throw(UnifyFail("rigid terms do not match"))
   }
   if xs->Array.length != ys->Array.length {
-    raise(UnifyFail("rigid terms have different number of arguments"))
+    throw(UnifyFail("rigid terms have different number of arguments"))
   }
   unifyArray(xs, ys, subst, ~gen)
 }
@@ -571,39 +571,39 @@ let tokenize = (str0: string): (token, string) => {
     | "\\" => {
         let re = RegExp.fromStringWithFlags(varRegexpString, ~flags="y")
         switch re->RegExp.exec(str) {
-        | None => raise(ParseError("invalid variable"))
+        | None => throw(ParseError("invalid variable"))
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [n] => (
               VarT(n->Int.fromString->Option.getExn),
               String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
             )
-          | _ => raise(ParseError("invalid variable"))
+          | _ => throw(ParseError("invalid variable"))
           }
         }
       }
     | "?" => {
         let re = RegExp.fromStringWithFlags(schematicRegexpString, ~flags="y")
         switch re->RegExp.exec(str) {
-        | None => raise(ParseError("invalid schematic"))
+        | None => throw(ParseError("invalid schematic"))
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [n] => (
               SchematicT(n->Int.fromString->Option.getExn),
               String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
             )
-          | _ => raise(ParseError("invalid schematic"))
+          | _ => throw(ParseError("invalid schematic"))
           }
         }
       }
     | "@" =>
       let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
       switch re->RegExp.exec(rest()) {
-      | None => raise(ParseError("invalid symbol"))
+      | None => throw(ParseError("invalid symbol"))
       | Some(res) =>
         switch RegExp.Result.matches(res) {
         | [n] => (ConsT(n), String.sliceToEnd(rest(), ~start=RegExp.lastIndex(re)))
-        | _ => raise(ParseError("invalid symbol"))
+        | _ => throw(ParseError("invalid symbol"))
         }
       }
     | _ => {
@@ -612,16 +612,16 @@ let tokenize = (str0: string): (token, string) => {
         | Some(res) =>
           switch RegExp.Result.matches(res) {
           | [n] => (NameT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(reName)))
-          | _ => raise(ParseError("invalid symbol"))
+          | _ => throw(ParseError("invalid symbol"))
           }
         | None =>
           let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
           switch re->RegExp.exec(str) {
-          | None => raise(ParseError("invalid symbol"))
+          | None => throw(ParseError("invalid symbol"))
           | Some(res) =>
             switch RegExp.Result.matches(res) {
             | [n] => (AtomT(n), String.sliceToEnd(str, ~start=RegExp.lastIndex(re)))
-            | _ => raise(ParseError("invalid symbol"))
+            | _ => throw(ParseError("invalid symbol"))
             }
           }
         }
@@ -651,12 +651,12 @@ let rec parseSimple = (str: string): (simple, string) => {
           let (tail, rest3) = parseSimple("("->String.concat(rest2))
           switch tail {
           | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
-          | _ => raise(Unreachable("bug"))
+          | _ => throw(Unreachable("bug"))
           }
         }
       }
     }
-  | RParen => raise(ParseError("unexpected right parenthesis"))
+  | RParen => throw(ParseError("unexpected right parenthesis"))
   | VarT(idx) => (VarS({idx: idx}), rest)
   | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
   | AtomT(name) => (AtomS({name, constructor: false}), rest)
@@ -665,7 +665,7 @@ let rec parseSimple = (str: string): (simple, string) => {
       let (result, rest1) = parseSimple(rest)
       (LambdaS({name, body: result}), rest1)
     }
-  | EOF => raise(ParseError("unexpected end of file"))
+  | EOF => throw(ParseError("unexpected end of file"))
   }
 }
 type env = Map.t<string, int>
@@ -696,7 +696,7 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
   | ListS({xs}) => {
       let ts = xs->Array.map(x => parseAll(x, ~env, ~gen?))
       if ts->Array.length == 0 {
-        raise(ParseError("empty list"))
+        throw(ParseError("empty list"))
       } else {
         ts
         ->Array.sliceToEnd(~start=1)
@@ -719,7 +719,7 @@ let rec parseAll = (simple: simple, ~env: env, ~gen=?): t => {
         seen(g, schematic)
         Schematic({schematic: schematic})
       }
-    | None => raise(ParseError("Schematics not allowed here"))
+    | None => throw(ParseError("Schematics not allowed here"))
     }
   | LambdaS({name, body}) =>
     Lam({

@@ -52,7 +52,7 @@ module MakeTerm = (Term: TERM) => {
 
     switch res {
     | Ok(res) => {
-        let result = Term.prettyPrint(res->fst, ~scope)
+        let result = Term.prettyPrint(res->Pair.first, ~scope)
         t->equal(result, expected, ~msg="prettyPrint output matches expected")
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
@@ -64,11 +64,11 @@ module MakeTerm = (Term: TERM) => {
     | Ok((term, "")) => term
     | Ok((_, rest)) => {
         t->fail(~msg="parse incomplete: " ++ rest)
-        raise(Unreachable(""))
+        throw(Unreachable(""))
       }
     | Error(msg) => {
         t->fail(~msg="parse failed: " ++ msg)
-        raise(Unreachable(""))
+        throw(Unreachable(""))
       }
     }
   }

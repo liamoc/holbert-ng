@@ -9,12 +9,12 @@
     "in-source": true
   },
   "suffix": ".mjs",
-  "bs-dependencies": [
+  "dependencies": [
     "@rescript/core",
     "@rescript/react",
     "@jmagaram/rescript-seq"
   ],
-  "bs-dev-dependencies": ["@dusty-phillips/rescript-zora"],
-  "bsc-flags": ["-open RescriptCore"],
+  "dev-dependencies": ["@dusty-phillips/rescript-zora"],
+  "compiler-flags": ["-open RescriptCore"],
   "jsx": { "version": 4 }
 }

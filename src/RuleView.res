@@ -91,7 +91,8 @@ module Make = (
             <tr>
               <td
                 colSpan={premises->Array.length + 1}
-                className="rule-cell rule-hypothetical-conclusion">
+                className="rule-cell rule-hypothetical-conclusion"
+              >
                 <JudgmentView judgment={conclusion} scope={scope} />
               </td>
             </tr>

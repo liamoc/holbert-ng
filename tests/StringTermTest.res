@@ -38,7 +38,7 @@ zoraBlock("parse", t => {
 })
 
 let parse = (input: string) =>
-  StringTerm.parse(input, ~scope=[], ~gen=StringTerm.makeGen())->Result.getExn->fst
+  StringTerm.parse(input, ~scope=[], ~gen=StringTerm.makeGen())->Result.getExn->Pair.first
 
 zoraBlock("unify", t => {
   let a = parse(`"a"`)

@@ -37,31 +37,32 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     "gen": Term.gen,
     "onChange": ('a, Judgment.subst) => unit,
   }
-  let make = (subRender: srProps<'a> => React.element) => props => {
-    <div>
-      <b> {React.string("by ")} </b>
-      {React.string(props.method.ruleName)}
-      <ul>
-        {props.method.subgoals
-        ->Array.mapWithIndex((sg, i) => {
-          <li key={String.make(i)}>
-            {React.createElement(
-              subRender,
-              {
-                "proof": sg,
-                "scope": props.scope,
-                "ruleStyle": props.ruleStyle,
-                "gen": props.gen,
-                "onChange": (newa, subst: Judgment.subst) =>
-                  props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
-              },
-            )}
-          </li>
-        })
-        ->React.array}
-      </ul>
-    </div>
-  }
+  let make = (subRender: srProps<'a> => React.element) =>
+    props => {
+      <div>
+        <b> {React.string("by ")} </b>
+        {React.string(props.method.ruleName)}
+        <ul>
+          {props.method.subgoals
+          ->Array.mapWithIndex((sg, i) => {
+            <li key={String.make(i)}>
+              {React.createElement(
+                subRender,
+                {
+                  "proof": sg,
+                  "scope": props.scope,
+                  "ruleStyle": props.ruleStyle,
+                  "gen": props.gen,
+                  "onChange": (newa, subst: Judgment.subst) =>
+                    props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
+                },
+              )}
+            </li>
+          })
+          ->React.array}
+        </ul>
+      </div>
+    }
 }
 
 module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
@@ -80,31 +81,32 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     "gen": Term.gen,
     "onChange": ('a, Judgment.subst) => unit,
   }
-  let make = (subRender: srProps<'a> => React.element) => props => {
-    <div>
-      <b> {React.string("elim ")} </b>
-      {React.string(`${props.method.ruleName} ${props.method.elimName}`)}
-      <ul>
-        {props.method.subgoals
-        ->Array.mapWithIndex((sg, i) => {
-          <li key={String.make(i)}>
-            {React.createElement(
-              subRender,
-              {
-                "proof": sg,
-                "scope": props.scope,
-                "ruleStyle": props.ruleStyle,
-                "gen": props.gen,
-                "onChange": (newa, subst: Judgment.subst) =>
-                  props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
-              },
-            )}
-          </li>
-        })
-        ->React.array}
-      </ul>
-    </div>
-  }
+  let make = (subRender: srProps<'a> => React.element) =>
+    props => {
+      <div>
+        <b> {React.string("elim ")} </b>
+        {React.string(`${props.method.ruleName} ${props.method.elimName}`)}
+        <ul>
+          {props.method.subgoals
+          ->Array.mapWithIndex((sg, i) => {
+            <li key={String.make(i)}>
+              {React.createElement(
+                subRender,
+                {
+                  "proof": sg,
+                  "scope": props.scope,
+                  "ruleStyle": props.ruleStyle,
+                  "gen": props.gen,
+                  "onChange": (newa, subst: Judgment.subst) =>
+                    props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
+                },
+              )}
+            </li>
+          })
+          ->React.array}
+        </ul>
+      </div>
+    }
 }
 
 module LemmaView = (
@@ -128,34 +130,35 @@ module LemmaView = (
     "onChange": ('a, Judgment.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
-  let make = (subRender: srProps<'a> => React.element) => props => {
-    <div>
-      <b> {React.string("have ")} </b>
-      <RuleView rule={props.method.rule} scope={props.scope} style={props.ruleStyle}>
-        {React.null}
-      </RuleView>
-      {React.createElement(
-        subRender,
-        {
-          "proof": props.method.proof,
-          "scope": props.scope,
-          "ruleStyle": props.ruleStyle,
-          "gen": props.gen,
-          "onChange": (proof, subst) => {props.onChange({...props.method, proof}, subst)},
-        },
-      )}
-      {React.createElement(
-        subRender,
-        {
-          "proof": props.method.show,
-          "scope": props.scope,
-          "ruleStyle": props.ruleStyle,
-          "gen": props.gen,
-          "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
-        },
-      )}
-    </div>
-  }
+  let make = (subRender: srProps<'a> => React.element) =>
+    props => {
+      <div>
+        <b> {React.string("have ")} </b>
+        <RuleView rule={props.method.rule} scope={props.scope} style={props.ruleStyle}>
+          {React.null}
+        </RuleView>
+        {React.createElement(
+          subRender,
+          {
+            "proof": props.method.proof,
+            "scope": props.scope,
+            "ruleStyle": props.ruleStyle,
+            "gen": props.gen,
+            "onChange": (proof, subst) => {props.onChange({...props.method, proof}, subst)},
+          },
+        )}
+        {React.createElement(
+          subRender,
+          {
+            "proof": props.method.show,
+            "scope": props.scope,
+            "ruleStyle": props.ruleStyle,
+            "gen": props.gen,
+            "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
+          },
+        )}
+      </div>
+    }
 }
 
 module RewriteView = (
@@ -176,27 +179,28 @@ module RewriteView = (
     "gen": HOTerm.gen,
     "onChange": ('a, Judgment.subst) => unit,
   }
-  let make = (subRender: srProps<'a> => React.element) => props => {
-    <div>
-      <b> {React.string("rewrite ")} </b>
-      {React.string(props.method.equalityName)}
-      <ul>
-        <li>
-          {React.createElement(
-            subRender,
-            {
-              "proof": props.method.subgoal,
-              "scope": props.scope,
-              "ruleStyle": props.ruleStyle,
-              "gen": props.gen,
-              "onChange": (subgoal, subst: Judgment.subst) =>
-                props.onChange({...props.method, subgoal}, subst),
-            },
-          )}
-        </li>
-      </ul>
-    </div>
-  }
+  let make = (subRender: srProps<'a> => React.element) =>
+    props => {
+      <div>
+        <b> {React.string("rewrite ")} </b>
+        {React.string(props.method.equalityName)}
+        <ul>
+          <li>
+            {React.createElement(
+              subRender,
+              {
+                "proof": props.method.subgoal,
+                "scope": props.scope,
+                "ruleStyle": props.ruleStyle,
+                "gen": props.gen,
+                "onChange": (subgoal, subst: Judgment.subst) =>
+                  props.onChange({...props.method, subgoal}, subst),
+              },
+            )}
+          </li>
+        </ul>
+      </div>
+    }
 }
 
 module RewriteReverseView = (
@@ -217,27 +221,28 @@ module RewriteReverseView = (
     "gen": HOTerm.gen,
     "onChange": ('a, Judgment.subst) => unit,
   }
-  let make = (subRender: srProps<'a> => React.element) => props => {
-    <div>
-      <b> {React.string("rewrite_reverse ")} </b>
-      {React.string(props.method.equalityName)}
-      <ul>
-        <li>
-          {React.createElement(
-            subRender,
-            {
-              "proof": props.method.subgoal,
-              "scope": props.scope,
-              "ruleStyle": props.ruleStyle,
-              "gen": props.gen,
-              "onChange": (subgoal, subst: Judgment.subst) =>
-                props.onChange({...props.method, subgoal}, subst),
-            },
-          )}
-        </li>
-      </ul>
-    </div>
-  }
+  let make = (subRender: srProps<'a> => React.element) =>
+    props => {
+      <div>
+        <b> {React.string("rewrite_reverse ")} </b>
+        {React.string(props.method.equalityName)}
+        <ul>
+          <li>
+            {React.createElement(
+              subRender,
+              {
+                "proof": props.method.subgoal,
+                "scope": props.scope,
+                "ruleStyle": props.ruleStyle,
+                "gen": props.gen,
+                "onChange": (subgoal, subst: Judgment.subst) =>
+                  props.onChange({...props.method, subgoal}, subst),
+              },
+            )}
+          </li>
+        </ul>
+      </div>
+    }
 }
 
 module CombineMethodView = (
@@ -258,24 +263,25 @@ module CombineMethodView = (
     onChange: (Method.t<'a>, Judgment.subst) => unit,
   }
   type srProps<'a> = Method1View.srProps<'a>
-  let make = (subrender: srProps<'a> => React.element) => props => {
-    switch props.method {
-    | First(m) =>
-      Method1View.make(subrender)({
-        method: m,
-        scope: props.scope,
-        ruleStyle: props.ruleStyle,
-        gen: props.gen,
-        onChange: (n, s) => props.onChange(First(n), s),
-      })
-    | Second(m) =>
-      Method2View.make(subrender)({
-        method: m,
-        scope: props.scope,
-        ruleStyle: props.ruleStyle,
-        gen: props.gen,
-        onChange: (n, s) => props.onChange(Second(n), s),
-      })
+  let make = (subrender: srProps<'a> => React.element) =>
+    props => {
+      switch props.method {
+      | First(m) =>
+        Method1View.make(subrender)({
+          method: m,
+          scope: props.scope,
+          ruleStyle: props.ruleStyle,
+          gen: props.gen,
+          onChange: (n, s) => props.onChange(First(n), s),
+        })
+      | Second(m) =>
+        Method2View.make(subrender)({
+          method: m,
+          scope: props.scope,
+          ruleStyle: props.ruleStyle,
+          gen: props.gen,
+          onChange: (n, s) => props.onChange(Second(n), s),
+        })
+      }
     }
-  }
 }

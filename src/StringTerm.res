@@ -40,7 +40,7 @@ let schematicsCountsIn: t => Belt.Map.Int.t<int> = (term: t) =>
     }
   )
 let maxSchematicCount = (term: t) => {
-  schematicsCountsIn(term)->Belt.Map.Int.maximum->Option.map(snd)->Option.getOr(0)
+  schematicsCountsIn(term)->Belt.Map.Int.maximum->Option.map(Pair.second)->Option.getOr(0)
 }
 let reduce = t => t
 let freeVarsIn = (term: t): Belt.Set.t<int, IntCmp.identity> =>
@@ -350,7 +350,7 @@ let makeGen = () => {
 }
 
 let parseMeta = (str: string) => {
-  let re = %re("/^([^\s.\[\]()]+)\./y")
+  let re = /^([^\s.\[\]()]+)\./y
   switch re->RegExp.exec(str->String.trim) {
   | None => Error("not a meta name")
   | Some(res) =>
@@ -416,8 +416,8 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   let execRe = re => execRe(re, String.sliceToEnd(str, ~start=pos.contents))
   let stringLit = () => {
     let identRegex = RegExp.fromString(`^${Util.identRegexStr}`)
-    let symbolRegex = %re(`/^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/`)
-    let numberRegex = %re(`/^(\d+)/`)
+    let symbolRegex = /^([!@#\$%\^~&*_+\-={};':|,.<>\/?]+)/
+    let numberRegex = /^(\d+)/
     switch execRe(identRegex)
     ->Option.orElse(execRe(symbolRegex))
     ->Option.orElse(execRe(numberRegex)) {
@@ -427,7 +427,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     }
   }
   let escaped = () => {
-    let escapedRegex = %re(`/\\([\$\?\\\"])/`)
+    let escapedRegex = /\\([\$\?\\\"])/
     switch execRe(escapedRegex) {
     | Some([char], l) => add(String(char), ~nAdvance=l)
     | Some(_) => error("regex escaped error")
@@ -436,14 +436,14 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   }
   let readInt = s => Int.fromString(s)->Option.getExn
   let schema = () => {
-    let schemaRegex = %re("/\?(\d+)\(((?:\d+\s*)*)\)/")
+    let schemaRegex = /\?(\d+)\(((?:\d+\s*)*)\)/
     switch execRe(schemaRegex) {
     | Some([idStr, allowedStr], l) => {
         let schematic = readInt(idStr)
         let allowed =
           allowedStr
           ->String.trim
-          ->String.splitByRegExp(%re("/\s+/"))
+          ->String.splitByRegExp(/\s+/)
           ->Array.keepSome
           ->Array.filter(s => s != "")
           ->Array.map(readInt)
@@ -454,8 +454,8 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
     }
   }
   let var = () => {
-    let varLitRegex = %re("/^\$\\(\d+)/")
-    let varScopeRegex = %re("/^\$([a-zA-Z]\w*)/")
+    let varLitRegex = /^\$\\(\d+)/
+    let varScopeRegex = /^\$([a-zA-Z]\w*)/
     switch execRe(varLitRegex) {
     | Some([match], l) => add(Var({idx: readInt(match)}), ~nAdvance=l)
     | Some(_) => error("var lit regex error")
@@ -473,7 +473,7 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   }
 
   // consume leading whitespace + open quote
-  switch execRe(%re(`/^\s*"/`)) {
+  switch execRe(/^\s*"/) {
   | Some(_, l) => pos := l
   | None => error("expected open quote")
   }

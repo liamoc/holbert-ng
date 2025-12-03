@@ -324,12 +324,12 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
                   seen(g, num)
                   Some(Schematic({schematic: num, allowed: bits}))
                 }
-              | None => raise(ParseError("Schematics not allowed here"))
+              | None => throw(ParseError("Schematics not allowed here"))
               }
-            | _ => raise(ParseError("Expected closing parenthesis"))
+            | _ => throw(ParseError("Expected closing parenthesis"))
             }
           }
-        | _ => raise(ParseError("Expected opening parenthesis"))
+        | _ => throw(ParseError("Expected opening parenthesis"))
         }
       }
     | Some(LParen) => {
@@ -344,7 +344,7 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
         }
         switch lex() {
         | Some(RParen) => Some(Compound({subexps: bits}))
-        | _ => raise(ParseError("Expected closing parenthesis"))
+        | _ => throw(ParseError("Expected closing parenthesis"))
         }
       }
     | _ => None

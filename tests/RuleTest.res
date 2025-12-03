@@ -7,8 +7,8 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     let res = RuleInst.parseInner(input, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok(res) => {
-        t->equal(res->snd, "", ~msg=input ++ " input consumed")
-        t->equal(res->fst, expect, ~msg?)
+        t->equal(res->Pair.second, "", ~msg=input ++ " input consumed")
+        t->equal(res->Pair.first, expect, ~msg?)
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
@@ -23,8 +23,8 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     let res = RuleInst.parseTopLevel(input, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok(res) => {
-        t->equal(res->snd, "", ~msg=input ++ " input consumed")
-        t->equal(res->fst, expect, ~msg?)
+        t->equal(res->Pair.second, "", ~msg=input ++ " input consumed")
+        t->equal(res->Pair.first, expect, ~msg?)
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }

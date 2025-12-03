@@ -113,7 +113,7 @@ exception Unreachable(string)
 exception Err(string)
 let mustFindIndex = (arr, f) => {
   switch Array.findIndex(arr, f) {
-  | -1 => raise(Unreachable("Element not found"))
+  | -1 => throw(Unreachable("Element not found"))
   | i => i
   }
 }

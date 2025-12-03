@@ -224,7 +224,7 @@ zoraBlock("unify test", t => {
       y,
       ~subst=emptySubst->substAdd(
         0,
-        HOTerm.parse("(x. (r (fst x)))", ~scope=[])->Result.getExn->fst,
+        HOTerm.parse("(x. (r (fst x)))", ~scope=[])->Result.getExn->Pair.first,
       ),
     )
   })
@@ -236,7 +236,7 @@ zoraBlock("unify test", t => {
       y,
       ~subst=emptySubst->substAdd(
         1,
-        HOTerm.parse("(x. x. (r (q \\0 \\1)))", ~scope=[])->Result.getExn->fst,
+        HOTerm.parse("(x. x. (r (q \\0 \\1)))", ~scope=[])->Result.getExn->Pair.first,
       ),
     )
   })
@@ -248,7 +248,7 @@ zoraBlock("unify test", t => {
       y,
       ~subst=emptySubst->substAdd(
         1,
-        HOTerm.parse("(x. x. (r (q (snd \\0) \\1)))", ~scope=[])->Result.getExn->fst,
+        HOTerm.parse("(x. x. (r (q (snd \\0) \\1)))", ~scope=[])->Result.getExn->Pair.first,
       ),
     )
   })
@@ -294,9 +294,9 @@ zoraBlock("unify test", t => {
       ~subst=emptySubst->substAdd(0, Symbol({name: "a", constructor: false})),
     )
   })
-  t->block("divergent", t => {
-    let divergent = "((x. x x) (x. x x))"
-    let a = "((x. ?0 x) (x. x x))"
+  t->block("divergent", _t => {
+    let _divergent = "((x. x x) (x. x x))"
+    let _a = "((x. ?0 x) (x. x x))"
     // we don't care
     // t->Util.testNotUnify(a, divergent)
   })
@@ -343,9 +343,9 @@ zoraBlock("unify test", t => {
     t->Util.testUnifyFail(a, b)
     t->testUnify(c, b, ~subst=emptySubst->substAdd(6, t->Util.parse("(x. S \\0)")))
   })
-  t->block("tests from induction examples", t => {
-    let r = "((?0 \\0) (?1 \\0))"
-    let g = "(f \\0)"
+  t->block("tests from induction examples", _t => {
+    let _r = "((?0 \\0) (?1 \\0))"
+    let _g = "(f \\0)"
     // what it's currently doing:
     //   0 := (x. y. f x)
     //   1 := doesn't matter
