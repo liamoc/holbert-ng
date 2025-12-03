@@ -345,14 +345,14 @@
       (= (A a) (B a))
     </hol-comp>
     <hol-config id="index.html/myconfig">Gentzen</hol-config>
-    <!-- <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat"> -->
-    <!-- n. -->
-    <!--   (Even (S (S n))) -->
-    <!--   ---------------  -->
-    <!--   (Even n) -->
-    <!---->
-    <!-- n. asm |- ? -->
-    <!-- </hol-proof> -->
+    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
+    n.
+      (Even (S (S n)))
+      --------------- 
+      (Even n)
+
+    n. asm |- ?
+    </hol-proof>
     <hol-proof id="index.html/prooftest2" deps="index.html/myconfig index.html/baz index.html/nat">
       x.y.
         (/\ x y)
@@ -555,6 +555,16 @@
       ----------- mexp-lexp
       "$s" L
       s. sM |- ?
+    </hol-string-proof>
+    <hol-string-proof id="index.html/lexp-mexp" deps="index.html/myconfig index.html/mexp index.html/mexp-induct index.html/lexp index.html/lexp-n">
+      s. "$s" L
+      ----------- mexp-lexp
+      "$s" M
+      s. sL |- elim (L_mutualInduct sL "" "$s" "" "M" "M") {
+        |- by (M-Empty) {}
+        s1.s2. 0 1 2 3 |- elim (M-Juxtapose 2 "$s1" "$s2") {
+            |- by (3) {}}
+        s. 0 1 |- elim (M-Surround 1 "$s") {}}
     </hol-string-proof>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
