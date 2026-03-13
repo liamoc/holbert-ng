@@ -1,3 +1,3 @@
 include Signatures.JUDGMENT_VIEW
-  with module Term := StringTerm
-  and module Judgment := StringTermJudgment
+  with module Term := StringSExp
+  and module Judgment := TermAsJudgment.StringSExpJ

@@ -1,12 +1,17 @@
-module TermView = StringTermView
+module StringSymbolView: SExpViewFunc.SYMBOL_VIEW with module Symbol := StringSExp.StringSymbol = {
+  type props = {name: StringSExp.StringSymbol.t, scope: array<string>}
+  let make = ({name, scope}: props) =>
+    switch name {
+    | StringSExp.StringS(term) => <StringTermView term scope />
+    | StringSExp.ConstS(name) => <SExpView.ConstSymbolView name scope />
+    }
+}
+
+module View = SExpViewFunc.Make(StringSExp.StringSymbol, StringSymbolView, StringSExp)
+
+module TermView = View
 type props = {
-  judgment: StringTermJudgment.t,
+  judgment: StringSExp.t,
   scope: array<string>,
 }
-let make = ({judgment: (term, j), scope}) => {
-  <span className="term-compound">
-    <StringTermView term scope />
-    {React.string(" ")}
-    <SExpView term=j scope />
-  </span>
-}
+let make = ({judgment, scope}) => View.make({term: judgment, scope})

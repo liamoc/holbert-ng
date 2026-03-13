@@ -1,6 +1,5 @@
 open Signatures
 open Component
-open Util
 
 // InductiveSet is specific to HOTerm to allow pattern matching on term structure
 module Make = (
@@ -57,10 +56,10 @@ module Make = (
   let generateInductionRule = (group: predicateGroup, allGroups: array<predicateGroup>): Rule.t => {
     let {name: str, arity: i} = group
     let numFormers = Array.length(allGroups)
-    let groupIndex = mustFindIndex(allGroups, g => g.name == str && g.arity == i)
+    let groupIndex = Util.mustFindIndex(allGroups, g => g.name == str && g.arity == i)
 
     let findFormerIndex = (name, arity) =>
-      mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
+      Util.mustFindIndex(allGroups, g => g.name == name && g.arity == arity)
 
     let generateInductiveHypothesis = (premise: Rule.t, offset: int): option<Rule.t> => {
       let (head, args) = HOTerm.strip(premise.conclusion)
@@ -89,7 +88,7 @@ module Make = (
       let (conclusionHead, conclusionArgs) = HOTerm.strip(constructorRule.conclusion)
       let typeIndex = switch conclusionHead {
       | Symbol({name}) => findFormerIndex(name, Array.length(conclusionArgs))
-      | _ => throw(Unreachable("Constructor conclusion must have a Symbol head"))
+      | _ => throw(Util.Unreachable("Constructor conclusion must have a Symbol head"))
       }
 
       {

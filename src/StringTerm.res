@@ -503,27 +503,4 @@ let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, remaining), 
   acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
 }
 
-let toSExp = t => {
-  let convertPiece = p =>
-    switch p {
-    | String(s) => SExp.Symbol({name: s})
-    | Var({idx}) => SExp.Var({idx: idx})
-    | Schematic({schematic, allowed}) => SExp.Schematic({schematic, allowed})
-    | Ghost => SExp.ghostTerm
-    }
-  switch Array.length(t) {
-  | 1 => convertPiece(t[0]->Option.getExn)
-  | _ => SExp.Compound({subexps: Array.map(t, convertPiece)})
-  }
-}
-
-let rec fromSExp = (t: SExp.t) =>
-  switch t {
-  | SExp.Symbol({name}) => [String(name)]
-  | SExp.Schematic({schematic, allowed}) => [Schematic({schematic, allowed})]
-  | SExp.Var({idx}) => [Var({idx: idx})]
-  | SExp.Compound({subexps}) => subexps->Array.flatMap(fromSExp)
-  | SExp.Ghost => [Ghost]
-  }
-
 let ghostTerm = [Ghost]

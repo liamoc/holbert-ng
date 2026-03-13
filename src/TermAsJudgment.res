@@ -16,3 +16,4 @@ module Make = (Term: TERM): (
 
 module SExpJ = Make(SExp)
 module HOTermJ = Make(HOTerm)
+module StringSExpJ = Make(StringSExp)

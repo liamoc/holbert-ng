@@ -1,5 +1,4 @@
 open Signatures
-open Util
 module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
   type t = {
@@ -37,6 +36,7 @@ module type PROOF_METHOD = {
 }
 
 let seqSizeLimit = 100
+let newline = Util.newline
 
 module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)

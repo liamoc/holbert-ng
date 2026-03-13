@@ -1,6 +1,5 @@
 open Signatures
 open Zora
-open Util
 
 let stringifyExn = (t: 'a) => JSON.stringifyAny(t, ~space=2)->Option.getExn
 
@@ -64,11 +63,11 @@ module MakeTerm = (Term: TERM) => {
     | Ok((term, "")) => term
     | Ok((_, rest)) => {
         t->fail(~msg="parse incomplete: " ++ rest)
-        throw(Unreachable(""))
+        throw(Util.Unreachable(""))
       }
     | Error(msg) => {
         t->fail(~msg="parse failed: " ++ msg)
-        throw(Unreachable(""))
+        throw(Util.Unreachable(""))
       }
     }
   }
