@@ -14,7 +14,13 @@ module Make = (
   open RuleView
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
-  type state = {name: string, rule: Rule.t, proof: Proof.t, gen: Term.gen}
+  type state = {
+    name: string,
+    rule: Rule.t,
+    proof: Proof.t,
+    gen: Term.gen,
+    substFailed: option<string>,
+  }
   type props = {
     content: state,
     imports: Ports.t,
@@ -39,7 +45,7 @@ module Make = (
         Error("Trailing input: "->String.concat(s'))
       | Ok((proof, _)) =>
         Ok((
-          {name, rule, proof, gen},
+          {name, rule, proof, gen, substFailed: None},
           {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None},
         ))
       }
@@ -51,15 +57,21 @@ module Make = (
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
     let sidebarRef = React.useRef(Nullable.null)
     let proofChanged = (proof, subst) => {
+      let proof = Proof.uncheck(proof)->Proof.substitute(subst)
       props.onChange(
-        {...props.content, proof: Proof.uncheck(proof)->Proof.substitute(subst)},
+        try {
+          Proof.check(ctx, proof, props.content.rule)->ignore
+          {...props.content, proof, substFailed: None}
+        } catch {
+        | SExpFunc.SubstNotCompatible(s) => {...props.content, substFailed: Some(s)}
+        },
         ~exports={
           Ports.facts: Dict.fromArray([(props.content.name, props.content.rule)]),
           ruleStyle: None,
         },
       )
     }
-    
+
     <SidebarContext sidebarRef>
       <h3> {React.string("Theorem")} </h3>
       <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
@@ -69,6 +81,10 @@ module Make = (
       <ProofView
         ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged
       />
+      {switch props.content.substFailed {
+      | Some(msg) => React.string(msg)
+      | None => React.null
+      }}
       <div className="sidebar" ref={ReactDOM.Ref.domRef(sidebarRef)} />
     </SidebarContext>
   }

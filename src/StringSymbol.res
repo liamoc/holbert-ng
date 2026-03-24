@@ -51,21 +51,16 @@ module Atom: SExpFunc.ATOM with type t = t = {
   let lowerSchematic = (schematic, allowed) => Some(
     StringS([StringA.Schematic({schematic, allowed})]),
   )
-  let substDeBruijn = (s, substs: Map.t<int, t>, ~from=?, ~to: int) =>
+  let substDeBruijn = (s, substs: array<option<t>>, ~from=?) =>
     switch s {
     | StringS(s) => {
-        let stringSubs =
-          substs
-          ->Map.entries
-          ->Iterator.toArrayWithMapper(((i, v)) =>
-            switch v {
-            | StringS(s) => Some((i, s))
-            | _ => None
-            }
-          )
-          ->Array.keepSome
-          ->Map.fromArray
-        StringS(StringA.Atom.substDeBruijn(s, stringSubs, ~from?, ~to))
+        let stringSubs = substs->Array.map(s =>
+          switch s {
+          | Some(StringS(s)) => Some(s)
+          | _ => None
+          }
+        )
+        StringS(StringA.Atom.substDeBruijn(s, stringSubs, ~from?))
       }
     | ConstS(s) => ConstS(s)
     }

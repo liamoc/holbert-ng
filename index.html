@@ -657,6 +657,27 @@
       |- ?
 
     </hol-string-proof>
+    <hol-string id="index.html/string-silliness" deps="index.html/myconfig">
+      a.
+      -------------- eq-refl
+      (Eq a a)
+
+      a. b. (Eq a b)
+      -------------- eq-sym
+      (Eq b a)
+
+      a. b. c. (Eq a b) (Eq "$b" c)
+      -------------- eq-trans-weird
+      (Eq a c)
+
+      -------------- eq-a-comp
+      (Eq "a" (Foo Bar))
+    </hol-string>
+    <hol-string-proof id="index.html/string-silliness-trip" deps="index.html/myconfig index.html/string-silliness">
+      ------------- eq-a-c
+      (Eq "a" "a")
+      |- ?
+    </hol-string-proof>
   <script type="module" src="./src/testcomponent.tsx"></script>
   </body>
 </html>

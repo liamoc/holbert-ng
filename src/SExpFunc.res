@@ -1,3 +1,5 @@
+exception SubstNotCompatible(string)
+
 module type ATOM = {
   type t
   type subst = Map.t<int, t>
@@ -9,7 +11,7 @@ module type ATOM = {
   // used for when trying to substitute a variable of the wrong type
   let lowerVar: int => option<t>
   let lowerSchematic: (int, array<int>) => option<t>
-  let substDeBruijn: (t, Map.t<int, t>, ~from: int=?, ~to: int) => t
+  let substDeBruijn: (t, array<option<t>>, ~from: int=?) => t
   let concrete: t => bool
 }
 
@@ -142,9 +144,17 @@ module Make = (Atom: ATOM): {
       unifyTerm(x, y)->Seq.flatMap(s1 =>
         a
         ->Array.sliceToEnd(~start=1)
-        ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
+        ->Array.filterMap(((t1, t2)) =>
+          try {Some((substitute(t1, s1), substitute(t2, s1)))} catch {
+          | SubstNotCompatible(_) => None
+          }
+        )
         ->unifyArray
-        ->Seq.map(s2 => combineSubst(s1, s2))
+        ->Seq.filterMap(s2 =>
+          try {Some(combineSubst(s1, s2))} catch {
+          | SubstNotCompatible(_) => None
+          }
+        )
       )
     }
   }
@@ -160,15 +170,7 @@ module Make = (Atom: ATOM): {
     }
   let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     switch term {
-    | Atom(s) => {
-        let symbolSubsts =
-          substs
-          ->Array.mapWithIndex((t, i) => lower(t)->Option.map(a => (i, a)))
-          ->Array.keepSome
-          ->Map.fromArray
-
-        Atom(Atom.substDeBruijn(s, symbolSubsts, ~from, ~to=Array.length(substs)))
-      }
+    | Atom(s) => Atom(Atom.substDeBruijn(s, Array.map(substs, lower), ~from))
 
     | Compound({subexps}) =>
       Compound({subexps: Array.map(subexps, x => substDeBruijn(x, substs, ~from))})

@@ -270,7 +270,8 @@ module Atom = {
   }
 
   // law: unify(a,b) == [{}] iff equivalent(a,b)
-  let substDeBruijn = (string: t, substs: Map.t<int, t>, ~from: int=0, ~to: int) => {
+  let substDeBruijn = (string: t, substs: array<option<t>>, ~from: int=0) => {
+    let to = Array.length(substs)
     Array.flatMap(string, piece =>
       switch piece {
       | String(_) => [piece]
@@ -278,7 +279,13 @@ module Atom = {
         if var < from {
           [piece]
         } else if var - from < to {
-          Map.get(substs, var - from)->Option.getOr([piece])
+          switch Option.getUnsafe(substs[var - from]) {
+          | Some(v) => v
+          | None =>
+            throw(
+              SExpFunc.SubstNotCompatible(`index ${Int.toString(var - from)} not of sort string`),
+            )
+          }
         } else {
           [Var({idx: var - to})]
         }

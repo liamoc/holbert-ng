@@ -18,7 +18,7 @@ module Atom = {
   let substitute = (name, _) => name
   let lowerVar = _ => None
   let lowerSchematic = (_, _) => None
-  let substDeBruijn = (name, _, ~from as _=?, ~to as _) => name
+  let substDeBruijn = (name, _, ~from as _=?) => name
   let concrete = _ => false
   let upshift = (t, _, ~from as _=?) => t
 }
