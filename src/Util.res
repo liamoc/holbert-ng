@@ -34,6 +34,20 @@ let prettyPrintIntMap = (m: Belt.Map.Int.t<'v>, ~showV: 'v => string=toString) =
   ->showArray
 }
 
+let prettyPrintVar = (idx: int, scope: array<string>) =>
+  "$" ++
+  switch scope[idx] {
+  | Some(n) if Array.indexOf(scope, n) == idx => n
+  | _ => "\\"->String.concat(String.make(idx))
+  }
+let prettyPrintSchematic = (schematic: int, allowed: array<int>, scope: array<string>) => {
+  let allowedStr =
+    allowed
+    ->Array.map(idx => prettyPrintVar(idx, scope))
+    ->Array.join(" ")
+  `?${Int.toString(schematic)}(${allowedStr})`
+}
+
 let mapIntersectionWith = (m1: Map.t<'k, 'a>, m2: Map.t<'k, 'b>, f: ('a, 'b) => 'c) => {
   let go = (m1, m2) => {
     let nu: Map.t<'k, 'c> = Map.make()
@@ -84,6 +98,16 @@ let mapEqual = (m1, m2) => {
     ->Iterator.toArray
     ->Array.filter(((a, b)) => a == b)
     ->Array.length == Map.size(m2)
+}
+
+module Map = {
+  type t<'k, 'v> = Map.t<'k, 'v>
+  let filterMap = (m: t<'k, 'v1>, f: ('k, 'v1) => option<'v2>): t<'k, 'v2> =>
+    m
+    ->Map.entries
+    ->Iterator.toArrayWithMapper(((i, v)) => f(i, v)->Option.map(v => (i, v)))
+    ->Array.keepSome
+    ->Map.fromArray
 }
 
 let arrayWithIndex = (arr: array<React.element>) => {

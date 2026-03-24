@@ -1,13 +1,9 @@
-module type ATOM_VIEW = {
-  module Atom: SExpFunc.ATOM
-  type props = {name: Atom.t, scope: array<string>}
-  let make: props => React.element
-}
+module type ATOM_VIEW = AtomDef.ATOM_VIEW
 
 module Make = (
-  Atom: SExpFunc.ATOM,
+  Atom: AtomDef.COERCIBLE_ATOM,
   AtomView: ATOM_VIEW with module Atom := Atom,
-  SExp: module type of SExpFunc.Make(Atom),
+  SExp: module type of SExp.Make(Atom),
 ): {
   include Signatures.TERM_VIEW with module Term := SExp
 } => {

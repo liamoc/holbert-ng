@@ -1,24 +1,13 @@
-module type ATOM = {
-  type t
-  type subst = Map.t<int, t>
-  let unify: (t, t, ~gen: ref<int>=?) => Seq.t<subst>
-  let prettyPrint: (t, ~scope: array<string>) => string
-  let parse: (string, ~scope: array<string>, ~gen: ref<int>=?) => result<(t, string), string>
-  let substitute: (t, subst) => t
-  let upshift: (t, int, ~from: int=?) => t
-  // used for when trying to substitute a variable of the wrong type
-  let lowerVar: int => option<t>
-  let lowerSchematic: (int, array<int>) => option<t>
-  let substDeBruijn: (t, Map.t<int, t>, ~from: int=?, ~to: int) => t
-  let concrete: t => bool
-}
+exception SubstNotCompatible(string)
+
+module type ATOM = AtomDef.ATOM
 
 module IntCmp = Belt.Id.MakeComparable({
   type t = int
   let cmp = Pervasives.compare
 })
 
-module Make = (Atom: ATOM): {
+module Make = (Atom: AtomDef.COERCIBLE_ATOM): {
   type rec t =
     | Atom(Atom.t)
     | Compound({subexps: array<t>})
@@ -142,9 +131,17 @@ module Make = (Atom: ATOM): {
       unifyTerm(x, y)->Seq.flatMap(s1 =>
         a
         ->Array.sliceToEnd(~start=1)
-        ->Array.map(((t1, t2)) => (substitute(t1, s1), substitute(t2, s1)))
+        ->Array.filterMap(((t1, t2)) =>
+          try {Some((substitute(t1, s1), substitute(t2, s1)))} catch {
+          | SubstNotCompatible(_) => None
+          }
+        )
         ->unifyArray
-        ->Seq.map(s2 => combineSubst(s1, s2))
+        ->Seq.filterMap(s2 =>
+          try {Some(combineSubst(s1, s2))} catch {
+          | SubstNotCompatible(_) => None
+          }
+        )
       )
     }
   }
@@ -153,22 +150,15 @@ module Make = (Atom: ATOM): {
   let rec lower = (term: t): option<Atom.t> =>
     switch term {
     | Atom(s) => Some(s)
-    | Var({idx}) => Atom.lowerVar(idx)
-    | Schematic({schematic, allowed}) => Atom.lowerSchematic(schematic, allowed)
+    | Var({idx}) => Atom.liftHValue(HValue(AtomDef.SExpTag, AtomDef.Var({idx: idx})))
+    | Schematic({schematic, allowed}) =>
+      Atom.liftHValue(HValue(AtomDef.SExpTag, AtomDef.Schematic({schematic, allowed})))
     | Compound({subexps: [e1]}) => lower(e1)
     | _ => None
     }
   let rec substDeBruijn = (term: t, substs: array<t>, ~from: int=0) =>
     switch term {
-    | Atom(s) => {
-        let symbolSubsts =
-          substs
-          ->Array.mapWithIndex((t, i) => lower(t)->Option.map(a => (i, a)))
-          ->Array.keepSome
-          ->Map.fromArray
-
-        Atom(Atom.substDeBruijn(s, symbolSubsts, ~from, ~to=Array.length(substs)))
-      }
+    | Atom(s) => Atom(Atom.substDeBruijn(s, Array.map(substs, lower), ~from))
 
     | Compound({subexps}) =>
       Compound({subexps: Array.map(subexps, x => substDeBruijn(x, substs, ~from))})

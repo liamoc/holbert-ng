@@ -124,7 +124,7 @@ module MakeUnifyTester = (Subj: CAN_UNIFY) => {
   }
 }
 
-module MakeAtomTester = (Atom: SExpFunc.ATOM) => {
+module MakeAtomTester = (Atom: SExp.ATOM) => {
   module ParseWrapper: CAN_PARSE
     with type t = Atom.t
     and type meta = string

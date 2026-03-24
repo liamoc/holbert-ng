@@ -1,4 +1,3 @@
-open Util
 module IntCmp = Belt.Id.MakeComparable({
   type t = int
   let cmp = Pervasives.compare
@@ -102,7 +101,7 @@ let rec mapbind0 = (term: t, f: int => result<int, int => t>, ~from: int=0): t =
       | Ok(newIdx) =>
         let new = newIdx + from
         if new < 0 {
-          throw(Err("mapbind: negative index"))
+          throw(Util.Err("mapbind: negative index"))
         }
         Var({
           idx: new,
@@ -132,7 +131,7 @@ let mapbind = (term: t, f: int => int, ~from: int=0): t => mapbind0(term, idx =>
 let upshift = (term: t, amount: int, ~from: int=0) => mapbind(term, idx => idx + amount, ~from)
 let downshift = (term: t, amount: int, ~from: int=1) => {
   if amount > from {
-    throw(Err("downshift amount must be less than from"))
+    throw(Util.Err("downshift amount must be less than from"))
   }
   mapbind(term, idx => idx - amount, ~from)
 }
@@ -651,7 +650,7 @@ let rec parseSimple = (str: string): (simple, string) => {
           let (tail, rest3) = parseSimple("("->String.concat(rest2))
           switch tail {
           | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
-          | _ => throw(Unreachable("bug"))
+          | _ => throw(Util.Unreachable("bug"))
           }
         }
       }

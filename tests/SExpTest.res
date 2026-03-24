@@ -1,6 +1,6 @@
 open Zora
 
-module SExp = SExpFunc.Make(Symbolic.Atom)
+module SExp = SExp.Make(Coercible.Symbolic)
 open SExp
 
 module Util = TestUtil.MakeTerm(SExp)

@@ -4,5 +4,5 @@ type rec piece =
   | Schematic({schematic: int, allowed: array<int>})
 type t = array<piece>
 
-module Atom: SExpFunc.ATOM with type t = t
-module AtomView: SExpViewFunc.ATOM_VIEW with module Atom := Atom
+module Atom: AtomDef.ATOM with type t = t
+module AtomView: AtomDef.ATOM_VIEW with module Atom := Atom
