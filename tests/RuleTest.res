@@ -31,13 +31,13 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   }
 }
 
-module Symbol = AtomDef.MakeAtomAndView(
+module Symbol = AtomDef.MakeAtomChoiceAndView(
   Symbolic.Atom,
   Symbolic.AtomView,
-  AtomDef.NilAtomList,
-  AtomDef.NilAtomListView,
+  AtomDef.EmptyAtomChoice,
+  AtomDef.EmptyAtomChoiceView,
 )
-module StringSymbol = AtomDef.MakeAtomAndView(
+module StringSymbol = AtomDef.MakeAtomChoiceAndView(
   StringA.Atom,
   StringA.AtomView,
   Symbol.Atom,
@@ -45,9 +45,21 @@ module StringSymbol = AtomDef.MakeAtomAndView(
 )
 
 zoraBlock("string terms", t => {
+  module Symbol = AtomDef.MakeAtomChoiceAndView(
+    Symbolic.Atom,
+    Symbolic.AtomView,
+    AtomDef.EmptyAtomChoice,
+    AtomDef.EmptyAtomChoiceView,
+  )
+  module StringSymbol = AtomDef.MakeAtomChoiceAndView(
+    StringA.Atom,
+    StringA.AtomView,
+    Symbol.Atom,
+    Symbol.AtomView,
+  )
   module StringSExp = SExp.Make(StringSymbol.Atom)
-  let wrapString = (s): StringSExp.t => Atom(AtomDef.AnyValue(StringA.BaseAtom.Tag, s))
-  let wrapSymbol = (s): StringSExp.t => Atom(AnyValue(Symbolic.BaseAtom.Tag, s))
+  let wrapString = (s): StringSExp.t => s->AtomBase.String.wrap->Atom
+  let wrapSymbol = (s): StringSExp.t => s->Symbolic.Base.wrap->Atom
   module T = MakeTest(StringSExp, StringSExp)
   t->T.testParseInner(
     `[s1. ("$s1" p) |- ("($s1)" p)]`,
@@ -58,15 +70,12 @@ zoraBlock("string terms", t => {
           vars: [],
           premises: [],
           conclusion: StringSExp.Compound({
-            subexps: [wrapString([StringA.Var({idx: 0})]), wrapSymbol("p")],
+            subexps: [wrapString([Var({idx: 0})]), wrapSymbol("p")],
           }),
         },
       ],
       conclusion: StringSExp.Compound({
-        subexps: [
-          wrapString([StringA.String("("), StringA.Var({idx: 0}), StringA.String(")")]),
-          wrapSymbol("p"),
-        ],
+        subexps: [wrapString([String("("), Var({idx: 0}), String(")")]), wrapSymbol("p")],
       }),
     },
   )
@@ -75,11 +84,11 @@ zoraBlock("string terms", t => {
 zoraBlock("string HOTerms", t => {
   module StringHOTerm = HOTerm.Make(StringSymbol.Atom)
   let wrapString = (s): StringHOTerm.t => Symbol({
-    name: AtomDef.AnyValue(StringA.BaseAtom.Tag, s),
+    name: AtomBase.AnyValue(AtomBase.String.Tag, s),
     constructor: false,
   })
   let wrapSymbol = (s): StringHOTerm.t => Symbol({
-    name: AtomDef.AnyValue(Symbolic.BaseAtom.Tag, s),
+    name: AtomBase.AnyValue(Symbolic.Base.Tag, s),
     constructor: false,
   })
   let app = StringHOTerm.app
@@ -92,13 +101,10 @@ zoraBlock("string HOTerms", t => {
         {
           vars: [],
           premises: [],
-          conclusion: app(wrapString([StringA.Var({idx: 0})]), [wrapSymbol("p")]),
+          conclusion: app(wrapString([Var({idx: 0})]), [wrapSymbol("p")]),
         },
       ],
-      conclusion: app(
-        wrapString([StringA.String("("), StringA.Var({idx: 0}), StringA.String(")")]),
-        [wrapSymbol("p")],
-      ),
+      conclusion: app(wrapString([String("("), Var({idx: 0}), String(")")]), [wrapSymbol("p")]),
     },
   )
 })

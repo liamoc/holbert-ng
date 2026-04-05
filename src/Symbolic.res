@@ -1,9 +1,9 @@
-module BaseAtom = AtomDef.MakeBaseAtom({
+module Base = AtomBase.Make({
   type t = string
 })
 
 module Atom = {
-  module BaseAtom = BaseAtom
+  module Base = Base
   type t = string
   type subst = Map.t<int, string>
   let unify = (a, b, ~gen as _=?) =>
@@ -27,6 +27,6 @@ module Atom = {
 }
 
 module AtomView = {
-  type props = {name: string, scope: array<string>}
-  let make = (props: props) => React.string(props.name)
+  type props = {atom: string, scope: array<string>}
+  let make = (props: props) => React.string(props.atom)
 }

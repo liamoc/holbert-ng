@@ -3,21 +3,16 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-type piece =
-  | String(string)
-  | Var({idx: int})
-  | Schematic({schematic: int, allowed: array<int>})
-type t = array<piece>
-type meta = string
-type schematic = int
-
-module BaseAtom = AtomDef.MakeBaseAtom({
-  type t = t
-})
+module Base = AtomBase.String
+type t = Base.t
+type piece = Base.piece
 
 module Atom = {
-  module BaseAtom = BaseAtom
-  type t = t
+  module Base = Base
+  type t = Base.t
+  type schematic = int
+  type meta = string
+
   type subst = Map.t<schematic, t>
   let substitute = (term: t, subst: subst) =>
     Array.flatMap(term, piece => {
@@ -101,7 +96,7 @@ module Atom = {
       | (_, _) => {
           let (s1, ss) = uncons(s)
           switch s1 {
-          | Schematic({schematic, allowed}) =>
+          | Base.Schematic({schematic, allowed}) =>
             Belt.Array.range(0, Array.length(t))
             ->Array.map(i => {
               let subTerm = Array.slice(t, ~start=0, ~end=i)
@@ -155,7 +150,7 @@ module Atom = {
           let searchSub = (schematic: int, allowed: array<int>, edge: graphSub): array<
             array<(int, graphSub)>,
           > => {
-            let piece = Schematic({schematic, allowed})
+            let piece = Base.Schematic({schematic, allowed})
             let sub = switch edge {
             | Eps => singletonSubst(schematic, [])
             | PieceLitSub(p) => singletonSubst(schematic, [p, piece])
@@ -383,7 +378,7 @@ module Atom = {
       switch execRe(identRegex)
       ->Option.orElse(execRe(symbolRegex))
       ->Option.orElse(execRe(numberRegex)) {
-      | Some([match], l) => add(String(match), ~nAdvance=l)
+      | Some([match], l) => add(Base.String(match), ~nAdvance=l)
       | Some(_) => error("regex string lit error")
       | None => error("expected string")
       }
@@ -462,14 +457,14 @@ module Atom = {
   let concrete = t =>
     t->Array.every(p =>
       switch p {
-      | Schematic(_) => false
+      | Base.Schematic(_) => false
       | _ => true
       }
     )
-  let coerce = (AtomDef.AnyValue(tag, a)) =>
+  let coerce = (AtomBase.AnyValue(tag, a)) =>
     switch tag {
-    | Symbolic.BaseAtom.Tag => Some([String(a)])
-    | AtomDef.VarBase.Tag =>
+    | Symbolic.Base.Tag => Some([Base.String(a)])
+    | AtomBase.VarBase.Tag =>
       Some([
         switch a {
         | Var({idx}) => Var({idx: idx})
@@ -481,7 +476,7 @@ module Atom = {
 }
 
 module AtomView = {
-  type props = {name: t, scope: array<string>}
+  type props = {atom: t, scope: array<string>}
   type idx_props = {idx: int, scope: array<string>}
   let viewVar = (props: idx_props) =>
     switch props.scope[props.idx] {
@@ -527,10 +522,10 @@ module AtomView = {
   }
 
   @react.componentWithProps
-  let make = ({name, scope}) =>
+  let make = ({atom, scope}) =>
     <span className="term-compound">
       {React.string("\"")}
-      {name
+      {atom
       ->Array.mapWithIndex((piece, i) => {
         let key = Int.toString(i)
         <Piece piece scope key />

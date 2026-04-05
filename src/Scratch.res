@@ -42,13 +42,13 @@ module DLREView = MethodView.CombineMethodView(
 module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTerm, HOTermJView, DLRView))
 module ConfS = ConfigBlock.Make(HOTerm, HOTerm)
 
-module Symbol = AtomDef.MakeAtomAndView(
+module Symbol = AtomDef.MakeAtomChoiceAndView(
   Symbolic.Atom,
   Symbolic.AtomView,
-  AtomDef.NilAtomList,
-  AtomDef.NilAtomListView,
+  AtomDef.EmptyAtomChoice,
+  AtomDef.EmptyAtomChoiceView,
 )
-module StringSymbol = AtomDef.MakeAtomAndView(
+module StringSymbol = AtomDef.MakeAtomChoiceAndView(
   StringA.Atom,
   StringA.AtomView,
   Symbol.Atom,

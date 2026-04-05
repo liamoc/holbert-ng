@@ -3,13 +3,13 @@ open HOTerm
 
 module Util = TestUtil.MakeTerm(HOTerm)
 
-module Symbol = AtomDef.MakeAtomAndView(
+module Symbol = AtomDef.MakeAtomChoiceAndView(
   Symbolic.Atom,
   Symbolic.AtomView,
-  AtomDef.NilAtomList,
-  AtomDef.NilAtomListView,
+  AtomDef.EmptyAtomChoice,
+  AtomDef.EmptyAtomChoiceView,
 )
-module StringSymbol = AtomDef.MakeAtomAndView(
+module StringSymbol = AtomDef.MakeAtomChoiceAndView(
   StringA.Atom,
   StringA.AtomView,
   Symbol.Atom,
@@ -18,11 +18,11 @@ module StringSymbol = AtomDef.MakeAtomAndView(
 module StringHOTerm = HOTerm.Make(StringSymbol.Atom)
 module StringUtil = TestUtil.MakeTerm(StringHOTerm)
 let wrapString = s => StringHOTerm.Symbol({
-  name: AtomDef.AnyValue(StringA.BaseAtom.Tag, s),
+  name: AtomBase.AnyValue(StringA.Base.Tag, s),
   constructor: false,
 })
 let wrapSymbol = s => StringHOTerm.Symbol({
-  name: AtomDef.AnyValue(Symbolic.BaseAtom.Tag, s),
+  name: AtomBase.AnyValue(Symbolic.Base.Tag, s),
   constructor: false,
 })
 
@@ -169,9 +169,10 @@ zoraBlock("parse and prettyprint", t => {
 })
 
 zoraBlock("string HOTerm functor", t => {
+  module B = AtomBase.String
   t->block("parse string atom", t => {
-    t->StringUtil.testParse(`"x y"`, wrapString([StringA.String("x"), StringA.String("y")]))
-    t->StringUtil.testParse(`"$s"`, ~scope=["s"], wrapString([StringA.Var({idx: 0})]))
+    t->StringUtil.testParse(`"x y"`, wrapString([String("x"), String("y")]))
+    t->StringUtil.testParse(`"$s"`, ~scope=["s"], wrapString([AtomBase.String.Var({idx: 0})]))
     t->StringUtil.testParsePrettyPrint(`"x y"`, `"x y"`)
   })
   t->block("parse symbolic atom", t => {
@@ -179,7 +180,7 @@ zoraBlock("string HOTerm functor", t => {
     t->StringUtil.testParse(
       "@cons",
       StringHOTerm.Symbol({
-        name: AtomDef.AnyValue(Symbolic.BaseAtom.Tag, "cons"),
+        name: AtomBase.AnyValue(Symbolic.Base.Tag, "cons"),
         constructor: true,
       }),
     )
@@ -194,11 +195,11 @@ zoraBlock("string HOTerm functor", t => {
     let substAdd = StringHOTerm.substAdd
     t->equal(
       StringHOTerm.unify(parse(`"a ?0() c"`), parse(`"a b c"`))->Seq.head,
-      Some(emptySubst->substAdd(0, wrapString([StringA.String("b")]))),
+      Some(emptySubst->substAdd(0, wrapString([String("b")]))),
     )
     t->equal(
       StringHOTerm.unify(parse(`(P "?1() a" "?1()")`), parse(`(P "a ?1()" "a")`))->Seq.head,
-      Some(emptySubst->substAdd(1, wrapString([StringA.String("a")]))),
+      Some(emptySubst->substAdd(1, wrapString([String("a")]))),
     )
     let choices =
       StringHOTerm.unify(parse(`"?1() a"`), parse(`"a ?1()"`))
@@ -206,10 +207,7 @@ zoraBlock("string HOTerm functor", t => {
       ->Seq.toArray
     t->equal(
       choices,
-      [
-        emptySubst->substAdd(1, wrapString([])),
-        emptySubst->substAdd(1, wrapString([StringA.String("a")])),
-      ],
+      [emptySubst->substAdd(1, wrapString([])), emptySubst->substAdd(1, wrapString([String("a")]))],
     )
     t->equal(StringHOTerm.unify(parse(`"a"`), parse(`"b"`))->Seq.head, None)
   })

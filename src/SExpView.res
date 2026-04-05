@@ -55,9 +55,9 @@ module Make = (
         ->React.array}
       </span>
     | Var({idx}) => viewVar({idx, scope})
-    | Atom(name) =>
+    | Atom(atom) =>
       <span className="term-const">
-        <AtomView name scope />
+        <AtomView atom scope />
       </span>
     | Schematic({schematic: s, allowed: vs}) =>
       <span className="term-schematic">

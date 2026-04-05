@@ -2,7 +2,7 @@ open Component
 open! Util
 
 module Make = (
-  Atom: AtomDef.ATOM_LIST,
+  Atom: AtomDef.ATOM_CHOICE,
   Term: module type of SExp.Make(Atom),
   JudgmentView: Signatures.JUDGMENT_VIEW with module Term := Term and module Judgment := Term,
 ) => {
@@ -34,9 +34,11 @@ module Make = (
 
   let destructureOpt = (r: Term.t): option<(StringA.Atom.t, Symbolic.Atom.t)> =>
     switch r {
-    | Compound({subexps: [Atom(AtomDef.AnyValue(tag1, s)), Atom(AtomDef.AnyValue(tag2, name))]}) =>
+    | Compound({
+        subexps: [Atom(AtomBase.AnyValue(tag1, s)), Atom(AtomBase.AnyValue(tag2, name))],
+      }) =>
       switch (tag1, tag2) {
-      | (StringA.BaseAtom.Tag, Symbolic.BaseAtom.Tag) => Some((s, name))
+      | (StringA.Base.Tag, Symbolic.Base.Tag) => Some((s, name))
       | _ => None
       }
     | _ => None
@@ -85,7 +87,10 @@ module Make = (
     let aIdx = vars->Array.findIndex(i => i == a)
     let bIdx = vars->Array.findIndex(i => i == b)
     let surround = (t: StringA.Atom.t, aIdx: int, bIdx: int) => {
-      Array.concat(Array.concat([StringA.Var({idx: aIdx})], t), [StringA.Var({idx: bIdx})])
+      Array.concat(
+        Array.concat([AtomBase.String.Var({idx: aIdx})], t),
+        [AtomBase.String.Var({idx: bIdx})],
+      )
     }
     let lookupGroup = (name: string): option<int> =>
       mentionedGroups->Array.findIndexOpt(g => name == g.name)
@@ -106,7 +111,7 @@ module Make = (
         vars: rule.vars,
         premises: rule.premises->Array.concat(inductionHyps),
         conclusion: structure(
-          Atom(surround(s, aIdx + baseIdx, bIdx + baseIdx)->StringA.BaseAtom.wrap),
+          Atom(surround(s, aIdx + baseIdx, bIdx + baseIdx)->StringA.Base.wrap),
           Var({idx: pIdx + baseIdx}),
         ),
       }
@@ -118,13 +123,13 @@ module Make = (
           {
             Rule.vars: [],
             premises: [],
-            conclusion: structure(Var({idx: xIdx}), Atom(group.name->Symbolic.BaseAtom.wrap)),
+            conclusion: structure(Var({idx: xIdx}), Atom(group.name->Symbolic.Base.wrap)),
           },
         ],
         mentionedGroups->Array.flatMap(g => g.rules->Array.map(r => replaceJudgeRHS(r, 0))),
       ),
       conclusion: structure(
-        Atom(surround([Var({idx: xIdx})], aIdx, bIdx)->StringA.BaseAtom.wrap),
+        Atom(surround([Var({idx: xIdx})], aIdx, bIdx)->StringA.Base.wrap),
         Var({idx: 0}),
       ), // TODO: clean here
     }

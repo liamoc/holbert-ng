@@ -6,7 +6,7 @@ module IntCmp = Belt.Id.MakeComparable({
 module type ATOM = AtomDef.ATOM
 
 module DefaultAtom = {
-  module BaseAtom = AtomDef.MakeBaseAtom({
+  module Base = AtomBase.Make({
     type t = string
   })
   type t = string

@@ -1,9 +1,5 @@
-type rec piece =
-  | String(string)
-  | Var({idx: int})
-  | Schematic({schematic: int, allowed: array<int>})
-type t = array<piece>
+type t = AtomBase.String.t
 
-module BaseAtom: AtomDef.BASE_ATOM with type t = t
-module Atom: AtomDef.ATOM with module BaseAtom = BaseAtom
+module Base: AtomBase.BASE_ATOM with type t = t
+module Atom: AtomDef.ATOM with module Base = Base
 module AtomView: AtomDef.ATOM_VIEW with module Atom := Atom
