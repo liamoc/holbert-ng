@@ -108,6 +108,10 @@ module Map = {
     ->Iterator.toArrayWithMapper(((i, v)) => f(i, v)->Option.map(v => (i, v)))
     ->Array.keepSome
     ->Map.fromArray
+  let update = (m: t<'k, 'v>, k: 'k, f: 'v => 'v, ~default: 'v) => {
+    m->Map.set(k, Map.get(m, k)->Option.map(f)->Option.getOr(default))
+  }
+  let clone = (m: t<'k, 'v>) => m->Map.entries->Map.fromIterator
 }
 
 let arrayWithIndex = (arr: array<React.element>) => {

@@ -47,6 +47,7 @@
     --bound-col: #9343a7;
     --placeholder-fg-col: #aaa;
     --symbol-col: #990000;
+    --symbol-nat-col: #ffaa00;
     --item-inserting-col: #aa00cc;
     --sidebar-header-col: #c9c9d8;
     --error-bg-col: #ffaaaa;
@@ -243,6 +244,9 @@
   /* SYMBOLS */
   .symbol {
       color: var(--symbol-col);
+  }
+  .symbol-nat {
+    color: var(--symbol-nat-col)
   }
   .symbol-turnstile {
       padding-left: 6px;
@@ -597,47 +601,18 @@
         s. 0 1 |- elim (M-Surround 1 "$s") {}}
     </hol-string-proof>
     <hol-string id="index.html/string-arithmetic" deps="index.html/myconfig">
-      -------- nat-z
-      (Nat Z)
-      
-      n. (Nat n)
-      -------- nat-s
-      (Nat (S n))
-
-      n1.
-      -------- nat-plus-z
-      (Eval (Plus n1 Z) n1) 
-
-      n1. n2. res.
-      (Eval (Plus n1 n2) res)
-      --------- nat-plus-s
-      (Eval (Plus n1 (S n2)) (S res))
-
-      ------- string-zero
-      (Parse "0" Z)
-
-      ------- string-one
-      (Parse "1" (S Z))
-
-      -------- string-two
-      (Parse "2" (S (S Z)))
-
-      -------- string-three
-      (Parse "3" (S (S (S Z))))
-
-      s1. s2. n2.
-      (Parse s2 n2)
+      s. n.
       --------- string-prod
-      (Parse "$s1 * $s2" (Prod s1 n2))
+      (Parse "$s * $n" (Prod s nat(n)))
 
       s1.
       ---------- eval-prod-Z
-      (Eval (Prod s1 Z) "")
+      (Eval (Prod s1 nat(0)) "")
 
       s1. s1n. n.
-      (Eval (Prod s1 n) s1n)
+      (Eval (Prod s1 nat(n)) s1n)
       ----------- eval-prod-S
-      (Eval (Prod s1 (S n)) "$s1$s1n")
+      (Eval (Prod s1 nat(n + 1)) "$s1$s1n")
 
       s. ast. res.
       (Parse s ast)
@@ -646,16 +621,59 @@
       (PEval s res)
 
     </hol-string>
-    <hol-string-proof id="index.html/sexp-nat-toy" deps="index.html/myconfig index.html/string-arithmetic">
-      ----------- mexp-lexp
-      (Eval (Plus (S Z) (S (S Z))) (S (S (S Z))))
-      |- ?
-    </hol-string-proof> 
     <hol-string-proof id="index.html/string-prod-toy" deps="index.html/myconfig index.html/string-arithmetic">
       ------------- foo-3
       (PEval "foo * 3" "foo foo foo")
       |- ?
 
+    </hol-string-proof>
+    <hol-string id="index.html/types" deps="index.html/myconfig">
+      n. (Type n Nat)
+      ------------ Var
+      (Var n)
+
+      ------------ Sig-Empty
+      (Sig Empty)
+
+      f. n. sig. (Sig sig)
+      ------------ Sig-Cons
+      (Sig (Cons (f nat(n)) sig))
+
+      f. n. sig.
+      (Sig sig)
+      ------------ InSig-Head
+      (InSig (f nat(n)) (Cons (f nat(n)) sig))
+
+      f. n. g. sig.
+      (Sig sig)
+      (InSig (f nat(n)) sig)
+      ------------ InSig-Next
+      (InSig (f nat(n)) (Cons g (f nat(n))))
+
+      v. sig. (Sig sig) (Var v)
+      ------------ Term-Var
+      (Term sig (Var v))
+
+      a. sig. (Sig sig) (InSig (a nat(0)) sig)
+      ------------ Term-Const
+      (Term sig (Const a))
+
+      sig.
+      ------------ Term-List-0
+      (TermList sig nat(0) Empty)
+
+      f. n. t. ts. sig. (Term sig t) (TermList nat(n) ts)
+      ------------ Term-List-n
+      (TermList sig nat(n + 1) (Cons t ts))
+      
+      f. n. ts. sig. (Sig sig) (InSig (f nat(n)) sig) (TermList sig nat(n) ts)
+      ------------ Term-Func
+      (Term sig (Func f ts))
+    </hol-string>
+    <hol-string-proof id="index.html/play-sig" deps="index.html/myconfig index.html/types">
+      ------------- penips
+      (Term (Cons (f nat(2)) (Cons (a nat(0)) Empty)) (Func f (Cons (Const a) (Cons (Var nat(1)) Empty))))
+      |- ?
     </hol-string-proof>
     <hol-string id="index.html/string-silliness" deps="index.html/myconfig">
       a.

@@ -335,7 +335,6 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
                 if cur.contents->String.get(0) == Some("}") {
                   cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
                   let res = {ruleName, elimName, instantiation, subgoals}
-                  Console.log(("parsed elim", res))
                   Ok((res, cur.contents))
                 } else {
                   Error("} or subgoal proof expected")

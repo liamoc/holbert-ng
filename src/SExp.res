@@ -267,32 +267,13 @@ module Make = (Atom: AtomDef.ATOM): {
   }
   let mkParser = (~scope: array<string>, ~gen=?): Parser.t<t> => {
     open Parser
-    let varLit = string("\\")->then(decimal)
-    let ident = regex1(/([^\s\(\)]+)/)
-    let varIdx =
-      varLit
-      ->or(
-        ident->bind(id =>
-          switch scope->Array.indexOfOpt(id) {
-          | Some(idx) => pure(idx)
-          | None => fail("expected variable")
-          }
-        ),
-      )
-      ->lexeme
+    let varIdx = Parser.Util.varIdx(~scope)
     let var = varIdx->map(idx => Var({idx: idx}))
+    let schemaLit = Parser.Util.schemaLit(~scope)->Parser.map(((schematic, allowed)) => {
+      gen->Option.map(g => allowed->Array.forEach(n => seen(g, n)))->ignore
+      Schematic({schematic, allowed})
+    })
 
-    let schemaLit =
-      string("?")
-      ->then(decimal)
-      ->bind(schematic =>
-        many(varIdx)
-        ->between(token("("), token(")"))
-        ->map(allowed => {
-          gen->Option.map(g => allowed->Array.forEach(n => seen(g, n)))->ignore
-          Schematic({schematic, allowed})
-        })
-      )
     let inner = fix(f =>
       choice([
         schemaLit->label("schematic"),

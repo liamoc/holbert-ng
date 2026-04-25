@@ -106,6 +106,7 @@ let many = p =>
       }
     )
   )->map(List.toArray)
+let sepBy = (t, delim) => t->bind(p => many(delim->then(t))->map(ps => Array.concat([p], ps)))
 let between = (inner: t<'a>, o1: t<string>, o2: t<string>): t<'a> => o1->then(inner)->thenIgnore(o2)
 let consume = (l: int): t<string> =>
   getCurrentStr->bind(str => {
@@ -142,7 +143,7 @@ let string = s =>
     if str->String.startsWith(s) {
       consume(String.length(s))->then(pure(s))
     } else {
-      expected([`literal ${s}`])
+      expected([`"${s}"`])
     }
   )
 
@@ -212,6 +213,10 @@ let dbg = (p: t<'a>, label): t<'a> => {
     Console.log(("successfully parsed", res))
     dbgInfo("exit")->map(_ => res)
   })
+  ->mapError(err => {
+    Console.log(("error", infoPretty(err.info)))
+    err
+  })
 }
 
 let lexeme = p => p->thenIgnore(regex(/^\s*/)->void)
@@ -235,3 +240,27 @@ let liftParse = (
   ~scope: array<'m>,
   ~gen: option<'g>=?,
 ): t<'a> => lift(s => f(s, ~scope, ~gen?))
+
+module Util = {
+  let varLit = string("\\")->then(decimal)->lexeme
+  let ident = regex1(/([^\s\(\)]+)/)->lexeme
+  let varIdx = (~scope: array<string>) =>
+    varLit->or(
+      ident->bind(id =>
+        switch scope->Array.indexOfOpt(id) {
+        | Some(idx) => pure(idx)
+        | None => expected(["in-scope variable"])
+        }
+      ),
+    )
+  let schemaLit = (~scope: array<string>) =>
+    string("?")
+    ->then(decimal)
+    ->bind(schematic =>
+      many(varIdx(~scope))
+      ->between(token("("), token(")"))
+      ->map(allowed => {
+        (schematic, allowed)
+      })
+    )
+}

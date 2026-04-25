@@ -471,6 +471,14 @@ module Atom = {
         | Schematic({schematic, allowed}) => Schematic({schematic, allowed})
         },
       ])
+    | AssocCommBase.Nat.Tag => {
+        module IntMap = Belt.Map.Int
+        if a.schemas->IntMap.size == 0 && a.vars->IntMap.size == 0 {
+          Some([String(Int.toString(a.const))])
+        } else {
+          None
+        }
+      }
     | _ => None
     }
 }

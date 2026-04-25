@@ -5,7 +5,7 @@ let testParse = (t: Zora.t, p, str, ~expect=?) => {
   switch P.runParser(p, str) {
   | Ok((res, "")) => expect->Option.map(expect => t->equal(res, expect))->ignore
   | Ok((_, rem)) => t->fail(~msg=`failed to consume remaining input: ${rem}`)
-  | Error(e) => t->fail(~msg=`parse failed`)
+  | Error(msg) => t->fail(~msg=`parse failed: ${msg}`)
   }
 }
 
