@@ -60,12 +60,16 @@ module StringNatSymbol = AtomDef.MakeAtomChoiceAndView(
   StringSymbol.Atom,
   StringSymbol.AtomView,
 )
-module StringSExp = SExp.Make(StringNatSymbol.Atom)
-module TermView = SExpView.Make(StringNatSymbol.Atom, StringNatSymbol.AtomView, StringSExp)
-module StringSExpJView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)
-module AxiomStr = Editable.TextArea(
-  StringAxiomSet.Make(StringNatSymbol.Atom, StringSExp, StringSExpJView),
+module Final = AtomDef.MakeAtomChoiceAndView(
+  Preludic.Atom,
+  Preludic.AtomView,
+  StringNatSymbol.Atom,
+  StringNatSymbol.AtomView,
 )
+module StringSExp = SExp.Make(Final.Atom)
+module TermView = SExpView.Make(Final.Atom, Final.AtomView, StringSExp)
+module StringSExpJView = TermViewAsJudgmentView.Make(StringSExp, StringSExp, TermView)
+module AxiomStr = Editable.TextArea(StringAxiomSet.Make(Final.Atom, StringSExp, StringSExpJView))
 
 module DerivationsOrLemmasStrView = MethodView.CombineMethodView(
   StringSExp,

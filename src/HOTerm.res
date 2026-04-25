@@ -36,6 +36,7 @@ module DefaultAtom = {
   let concrete = _ => true
   let upshift = (t, _, ~from as _=?) => t
   let coerce = _ => None
+  let reduce = t => t
 }
 
 module Make = (Atom: AtomDef.ATOM): {

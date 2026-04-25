@@ -248,6 +248,9 @@
   .symbol-nat {
     color: var(--symbol-nat-col)
   }
+  .symbol-prelude {
+    color: var(--symbol-prelude-col)
+  }
   .symbol-turnstile {
       padding-left: 6px;
       padding-right: 6px;
@@ -675,6 +678,38 @@
       (Term (Cons (f nat(2)) (Cons (a nat(0)) Empty)) (Func f (Cons (Const a) (Cons (Var nat(1)) Empty))))
       |- ?
     </hol-string-proof>
+    <hol-string id="index.html/palindrome" deps="index.html/myconfig">
+      a.
+      -------- Eq
+      (Eq a a)
+
+      s.
+      (Eq length("$s") nat(1))
+      ---------------------- Singleton
+      (Singleton "$s")
+
+      s. (Singleton "$s")
+      ---------------------- Rev-1
+      (Rev "$s" "$s")
+
+      s. ss. ssRev. (Rev "$ss" "$ssRev") (Singleton "$s")
+      ----------------------- Rev-n
+      (Rev "$s $ss" "$ssRev $s")
+
+      s. sRev. (Rev "$s" "$sRev")
+      ---------------------- Palindrome-Even
+      (Palindrome "$s $sRev")
+
+      s. sRev. m. (Rev "$s" "$sRev")
+      ---------------------- Palindrome-Odd
+      (Palindrome "$s $m $sRev")
+    </hol-string>
+    <hol-string-proof id="index.html/foobar" deps="index.html/myconfig index.html/palindrome">
+      ------------------ dlads
+      (Palindrome "a b c b a")
+      |- ?
+    </hol-string-proof>
+
     <hol-string id="index.html/string-silliness" deps="index.html/myconfig">
       a.
       -------------- eq-refl

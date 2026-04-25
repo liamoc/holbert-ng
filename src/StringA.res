@@ -454,6 +454,7 @@ module Atom = {
 
     acc.contents->Result.map(r => (r, str->String.sliceToEnd(~start=pos.contents)))
   }
+  let reduce = t => t
   let concrete = t =>
     t->Array.every(p =>
       switch p {
@@ -471,6 +472,7 @@ module Atom = {
         | Schematic({schematic, allowed}) => Schematic({schematic, allowed})
         },
       ])
+    | AtomBase.String.Tag => Some(a)
     | AssocCommBase.Nat.Tag => {
         module IntMap = Belt.Map.Int
         if a.schemas->IntMap.size == 0 && a.vars->IntMap.size == 0 {

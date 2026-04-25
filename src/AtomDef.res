@@ -11,6 +11,7 @@ module type ATOM = {
   let upshift: (t, int, ~from: int=?) => t
   let substDeBruijn: (t, array<option<t>>, ~from: int=?) => t
   let concrete: t => bool
+  let reduce: t => t
   let coerce: anyValue => option<t>
 }
 
@@ -45,6 +46,7 @@ module EmptyAtomChoice: ATOM_CHOICE = {
   let upshift = (_, _, ~from as _=?) => throw(AtomExpected)
   let substDeBruijn = (_, _, ~from as _=?) => throw(AtomExpected)
   let concrete = _ => throw(AtomExpected)
+  let reduce = _ => throw(AtomExpected)
 }
 
 module MakeAtomChoice = (Left: ATOM, Right: ATOM_CHOICE): (
@@ -105,6 +107,8 @@ module MakeAtomChoice = (Left: ATOM, Right: ATOM_CHOICE): (
       )->LeftBase.wrap
     )
     ->getOrElse(() => Right.substDeBruijn(atom, substs, ~from?))
+  let reduce = atom =>
+    atom->onLeft(val => Left.reduce(val)->LeftBase.wrap)->getOrElse(() => Right.reduce(atom))
   let concrete = atom => atom->onLeft(Left.concrete)->getOrElse(() => Right.concrete(atom))
 }
 

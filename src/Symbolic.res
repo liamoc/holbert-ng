@@ -23,6 +23,7 @@ module Atom = {
   let substDeBruijn = (name, _, ~from as _=?) => name
   let concrete = _ => true
   let upshift = (t, _, ~from as _=?) => t
+  let reduce = t => t
   let coerce = _ => None
 }
 

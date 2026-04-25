@@ -38,7 +38,12 @@ module Make = (Atom: AtomDef.ATOM): {
   let equivalent = (a: t, b: t) => {
     a == b
   }
-  let reduce = (term: t) => term
+  let rec reduce = (term: t) =>
+    switch term {
+    | Atom(a) => Atom(Atom.reduce(a))
+    | Compound({subexps}) => Compound({subexps: subexps->Array.map(reduce)})
+    | _ => term
+    }
   let rec schematicsIn: t => Belt.Set.t<int, IntCmp.identity> = (it: t) =>
     switch it {
     | Schematic({schematic, _}) => Belt.Set.make(~id=module(IntCmp))->Belt.Set.add(schematic)

@@ -204,6 +204,7 @@ module Make = (
     let full = term->between(token(Const.openTerm), token(Const.closeTerm))
     Parser.runParser(full, str)
   }
+  let reduce = t => t
 
   let substitute = (atom: t, subst: subst): t => {
     let substituted =
