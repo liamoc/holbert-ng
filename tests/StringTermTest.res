@@ -91,8 +91,8 @@ zoraBlock("unify", t => {
   })
 
   t->block("schematics appearing at most twice", t => {
-    t->UnifyUtil.testUnify(x, x, ~expect=[Map.fromArray([(1, [])])])
-    t->UnifyUtil.testUnify(x, y, ~expect=[Map.fromArray([(1, []), (2, [])])])
+    t->UnifyUtil.testUnify(x, y, ~expect=[Map.fromArray([(1, y)])])
+    t->UnifyUtil.testUnify(x, x, ~expect=[Map.fromArray([])])
 
     t->UnifyUtil.testUnify(a, parse(`"?1() a"`), ~expect=[Map.fromArray([(1, [])])])
     t->UnifyUtil.testUnify(
@@ -109,12 +109,12 @@ zoraBlock("unify", t => {
     t->UnifyUtil.testUnify(
       parse(`"a ?1()"`),
       parse(`"?2() b`),
-      ~expect=[Map.fromArray([(1, b), (2, a)])],
+      ~expect=[Map.fromArray([(1, [y, b]->Array.flat), (2, [a, y]->Array.flat)])],
     )
     t->UnifyUtil.testUnify(
       parse(`"a ?1() a"`),
       parse(`"?2() b a"`),
-      ~expect=[Map.fromArray([(1, b), (2, a)])],
+      ~expect=[Map.fromArray([(1, [y, b]->Array.flat), (2, [a, y]->Array.flat)])],
     )
     t->UnifyUtil.testUnify(
       parse(`"b ?1() a"`),

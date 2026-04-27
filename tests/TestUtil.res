@@ -83,6 +83,7 @@ module type CAN_UNIFY = {
   type meta
   let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
   let substEqual: (subst, subst) => bool
+  let prettyPrint: (t, ~scope: array<meta>) => string
   let prettyPrintSubst: (subst, ~scope: array<meta>) => string
 }
 

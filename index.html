@@ -709,7 +709,7 @@
       (Term (Cons (f nat(2)) (Cons (a nat(0)) Empty)) (Func f (Cons (Const a) (Cons (Var nat(1)) Empty))))
       |- ?
     </hol-string-proof>
-    <hol-string id="index.html/palindrome" deps="index.html/myconfig">
+    <hol-string id="index.html/palindrome-1" deps="index.html/myconfig">
       a.
       -------- Eq
       (Eq a a)
@@ -717,27 +717,22 @@
       s.
       (Eq length("$s") nat(1))
       ---------------------- Singleton
-      (Singleton "$s")
+      ("$s" Singleton)
 
-      s. (Singleton "$s")
-      ---------------------- Rev-1
-      (Rev "$s" "$s")
+      ----------- Palindrome-Empty
+      ("" Palindrome)
 
-      s. ss. ssRev. (Rev "$ss" "$ssRev") (Singleton "$s")
-      ----------------------- Rev-n
-      (Rev "$s $ss" "$ssRev $s")
+      c. ("$c" Singleton)
+      ------------ Palindrome-Single
+      ("$c" Palindrome)
 
-      s. sRev. (Rev "$s" "$sRev")
-      ---------------------- Palindrome-Even
-      (Palindrome "$s $sRev")
-
-      s. sRev. m. (Rev "$s" "$sRev")
-      ---------------------- Palindrome-Odd
-      (Palindrome "$s $m $sRev")
+      c. s. ("$c" Singleton) ("$s" Palindrome)
+      ------------ Palindrome-Add
+      ("$c $s $c" Palindrome)
     </hol-string>
-    <hol-string-proof id="index.html/foobar" deps="index.html/myconfig index.html/palindrome">
+    <hol-string-proof id="index.html/foobar" deps="index.html/myconfig index.html/palindrome-1">
       ------------------ dlads
-      (Palindrome "a b c b a")
+      ("a b c b a" Palindrome)
       |- ?
     </hol-string-proof>
 

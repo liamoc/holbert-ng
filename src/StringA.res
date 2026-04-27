@@ -14,6 +14,14 @@ module Atom = {
   type meta = string
 
   type subst = Map.t<schematic, t>
+  let prettyPrint = (term: t, ~scope: array<string>) =>
+    `"${Array.map(term, piece => {
+        switch piece {
+        | String(str) => str
+        | Var({idx}) => Util.prettyPrintVar(idx, scope)
+        | Schematic({schematic, allowed}) => Util.prettyPrintSchematic(schematic, allowed, scope)
+        }
+      })->Array.join(" ")}"`
   let substitute = (term: t, subst: subst) =>
     Array.flatMap(term, piece => {
       switch piece {
@@ -64,6 +72,23 @@ module Atom = {
     )
     nu
   }
+  let compose = (s1: subst, s2: subst) => {
+    let nu = Map.make()
+    Map.entries(s1)->Iterator.forEach(opt =>
+      switch opt {
+      | None => ()
+      | Some((key, term)) => Map.set(nu, key, term->substitute(s2))
+      }
+    )
+    Map.entries(s2)->Iterator.forEach(opt =>
+      switch opt {
+      | None => ()
+      | Some((key, term)) =>
+        Map.get(nu, key)->Option.map(_ => ())->Util.Option.getOrElse(() => Map.set(nu, key, term))
+      }
+    )
+    nu
+  }
 
   let emptySubst: subst = Map.make()
   let singletonSubst: (int, t) => subst = (schematic, term) => {
@@ -79,7 +104,9 @@ module Atom = {
     }
   }
 
-  type graphSub = Eps | PieceLitSub(piece) | SchemaSub(int, array<int>)
+  let tail = a => a->Array.sliceToEnd(~start=1)
+  let prependWith = (term: t, piece: option<piece>): t =>
+    piece->Option.map(p => [p])->Option.getOr([])->Array.concat(term)
   let unify = (s: array<piece>, t: array<piece>, ~gen as _=?): Seq.t<subst> => {
     let match = (p1: piece, p2: piece) => {
       switch (p1, p2) {
@@ -134,9 +161,7 @@ module Atom = {
       let search = (targetCycles: int): (array<subst>, bool) => {
         let moreSolsMightExist = ref(false)
         // seen is an assoc list
-        let rec inner = (s, t, cycle: int, seen: array<((t, t), int)>): array<
-          array<(int, graphSub)>,
-        > => {
+        let rec inner = (s, t, cycle: int, seen: array<((t, t), int)>): array<subst> => {
           let (newSeen, thisCycle) = switch seen->Array.findIndexOpt(((e, _)) => e == (s, t)) {
           | Some(i) => {
               let (_, thisCycle) = seen[i]->Option.getExn
@@ -147,88 +172,95 @@ module Atom = {
           | None => (Array.concat([((s, t), 1)], seen), 0)
           }
           let cycle = max(thisCycle, cycle)
-          let searchSub = (schematic: int, allowed: array<int>, edge: graphSub): array<
-            array<(int, graphSub)>,
-          > => {
-            let piece = Base.Schematic({schematic, allowed})
-            let sub = switch edge {
-            | Eps => singletonSubst(schematic, [])
-            | PieceLitSub(p) => singletonSubst(schematic, [p, piece])
-            | SchemaSub(s2, a2) =>
-              singletonSubst(schematic, [Schematic({schematic: s2, allowed: a2}), piece])
+          let recurse = (
+            subst: subst,
+            s,
+            t,
+            ~keepHead: bool=false,
+            ~prependS: option<piece>=?,
+            ~prependT: option<piece>=?,
+          ): array<subst> => {
+            let (s, t) = if keepHead {
+              (s, t)
+            } else {
+              (s->tail, t->tail)
             }
-            inner(substitute(s, sub), substitute(t, sub), cycle, newSeen)->Array.map(path =>
-              Array.concat(path, [(schematic, edge)])
-            )
+            inner(
+              s->substitute(subst)->prependWith(prependS),
+              t->substitute(subst)->prependWith(prependT),
+              cycle,
+              newSeen,
+            )->Array.map(res => subst->compose(res))
+          }
+          let matchSingleSchematic = (schematic: int, term: t): array<subst> => {
+            if term->Array.length > 1 && schematicsCountsIn(term)->Belt.Map.Int.has(schematic) {
+              []
+            } else if cycle == targetCycles {
+              [singletonSubst(schematic, term)]
+            } else {
+              []
+            }
           }
           if cycle > targetCycles {
             moreSolsMightExist := true
             []
+          } else if s == t && cycle == targetCycles {
+            [emptySubst]
+          } else if s == t {
+            []
           } else {
-            switch (s[0], t[0]) {
-            | (None, None) => cycle == targetCycles ? [[]] : []
-            | (Some(Schematic({schematic, allowed})), other)
-            | (other, Some(Schematic({schematic, allowed}))) =>
-              switch other {
-              | None => searchSub(schematic, allowed, Eps)
-              | Some(p) =>
-                switch p {
-                | String(_) =>
-                  Array.concat(
-                    searchSub(schematic, allowed, PieceLitSub(p)),
-                    searchSub(schematic, allowed, Eps),
-                  )
-                | Schematic({schematic: s2, allowed: a2}) =>
-                  if schematic == s2 {
-                    inner(
-                      s->Array.sliceToEnd(~start=1),
-                      t->Array.sliceToEnd(~start=1),
-                      cycle,
-                      newSeen,
-                    )
-                  } else {
-                    Array.concat(
-                      searchSub(schematic, allowed, Eps),
-                      searchSub(schematic, allowed, SchemaSub(s2, a2)),
-                    )
-                  }
-                | Var({idx}) =>
-                  if Belt.Set.Int.fromArray(allowed)->Belt.Set.Int.has(idx) {
-                    Array.concat(
-                      searchSub(schematic, allowed, PieceLitSub(p)),
-                      searchSub(schematic, allowed, Eps),
-                    )
-                  } else {
-                    searchSub(schematic, allowed, Eps)
+            switch (s, t) {
+            | ([Schematic({schematic, _})], t') => matchSingleSchematic(schematic, t')
+            | (s', [Schematic({schematic, _})]) => matchSingleSchematic(schematic, s')
+            | (_, _) => {
+                let schematicCase = (s1: int, a1: array<int>, lhs: t, rhs: t) => {
+                  let schem1 = Base.Schematic({schematic: s1, allowed: a1})
+                  switch rhs[0] {
+                  | None => recurse(singletonSubst(s1, []), lhs, rhs)
+                  | Some(Schematic({schematic: s2, allowed: a2})) => {
+                      let schem2 = Base.Schematic({schematic: s2, allowed: a2})
+                      let lhsEpsilon = recurse(singletonSubst(s1, []), lhs, rhs, ~keepHead=true)
+                      if s1 == s2 {
+                        lhsEpsilon->Array.concat(recurse(emptySubst, lhs, rhs))
+                      } else {
+                        Array.flat([
+                          lhsEpsilon,
+                          recurse(singletonSubst(s1, [schem2, schem1]), lhs, rhs, ~prependS=schem1),
+                          recurse(singletonSubst(s2, [schem1, schem2]), lhs, rhs, ~prependT=schem2),
+                        ])
+                      }
+                    }
+                  | Some(other) =>
+                    Array.flat([
+                      recurse(singletonSubst(s1, []), lhs, rhs, ~keepHead=true),
+                      recurse(
+                        singletonSubst(s1, [other, Schematic({schematic: s1, allowed: a1})]),
+                        lhs,
+                        rhs,
+                        ~prependS=schem1,
+                      ),
+                    ])
                   }
                 }
+                switch (s[0], t[0]) {
+                | (None, None) => cycle == targetCycles ? [emptySubst] : []
+                | (Some(Schematic({schematic, allowed})), _) =>
+                  schematicCase(schematic, allowed, s, t)
+                | (_, Some(Schematic({schematic, allowed}))) =>
+                  schematicCase(schematic, allowed, t, s)
+                | (Some(p1), Some(p2)) =>
+                  if p1 == p2 {
+                    inner(s->tail, t->tail, cycle, newSeen)
+                  } else {
+                    []
+                  }
+                | (_, None) | (None, _) => []
+                }
               }
-            | (p1, p2) if p1 == p2 =>
-              inner(s->Array.sliceToEnd(~start=1), t->Array.sliceToEnd(~start=1), cycle, newSeen)
-            | _ => []
             }
           }
         }
-        let paths = inner(s, t, 0, [])
-        let substs = paths->Array.map(path => {
-          let sub = Map.make()
-          path->Array.forEach(((schem, edge)) => {
-            Map.set(
-              sub,
-              schem,
-              switch edge {
-              | Eps => []
-              | PieceLitSub(p) => Array.concat(Map.get(sub, schem)->Option.getOr([]), [p])
-              | SchemaSub(s2, _) =>
-                Array.concat(
-                  Map.get(sub, schem)->Option.getOr([]),
-                  Map.get(sub, s2)->Option.getOr([]),
-                )
-              },
-            )
-          })
-          sub
-        })
+        let substs = inner(s, t, 0, [])
         let substsSorted = substs->Array.toSorted((s1, s2) => {
           let substLength = s =>
             s
@@ -245,10 +277,21 @@ module Atom = {
         })
         (substsSorted, moreSolsMightExist.contents)
       }
-      Seq.unfold((0, true), ((c, moreSolsMightExist)) => {
+      let hashSubst = subst =>
+        subst
+        ->Util.prettyPrintMap(~showV=t => prettyPrint(t, ~scope=[]))
+        ->Util.Hash.cyrb53
+      Seq.unfold((0, true, Belt.Set.Int.empty), ((c, moreSolsMightExist, seen)) => {
         if moreSolsMightExist {
           let (substs, moreSolsMightExist) = search(c)
-          Some(substs->Seq.fromArray, (c + 1, moreSolsMightExist))
+          let newSeen = ref(seen)
+          let uniqueSubsts = substs->Array.filter(subst => {
+            let hash = hashSubst(subst)
+            let seenThisSubst = newSeen.contents->Belt.Set.Int.has(hash)
+            newSeen := newSeen.contents->Belt.Set.Int.add(hash)
+            !seenThisSubst
+          })
+          Some(uniqueSubsts->Seq.fromArray, (c + 1, moreSolsMightExist, newSeen.contents))
         } else {
           None
         }
@@ -265,7 +308,7 @@ module Atom = {
     } else if max(maxCountS, maxCountT) <= 2 {
       pigPug(s, t)
     } else {
-      Seq.fromArray([])
+      Seq.empty
     }
   }
 
@@ -330,15 +373,6 @@ module Atom = {
     })
 
   type gen = ref<int>
-
-  let prettyPrint = (term: t, ~scope: array<string>) =>
-    `"${Array.map(term, piece => {
-        switch piece {
-        | String(str) => str
-        | Var({idx}) => Util.prettyPrintVar(idx, scope)
-        | Schematic({schematic, allowed}) => Util.prettyPrintSchematic(schematic, allowed, scope)
-        }
-      })->Array.join(" ")}"`
 
   type remaining = string
   type errorMessage = string
