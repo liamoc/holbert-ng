@@ -3,10 +3,11 @@ open Component
 
 // InductiveSet is specific to HOTerm to allow pattern matching on term structure
 module Make = (
-  Term: TERM with type t = HOTerm.t and type meta = string,
-  Judgment: JUDGMENT with module Term := Term and type t = HOTerm.t,
+  Term: HOTerm.S,
+  Judgment: JUDGMENT with module Term := Term and type t = Term.t,
   JudgmentView: JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment,
 ) => {
+  module HOTerm = Term
   module Rule = Rule.Make(Term, Judgment)
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
@@ -31,7 +32,7 @@ module Make = (
   let extractPredicateSignature = (rule: Rule.t): option<(string, int)> => {
     let (head, args) = HOTerm.strip(rule.conclusion)
     switch head {
-    | Symbol({name}) => Some((name, Array.length(args)))
+    | Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, name)}) => Some((name, Array.length(args)))
     | _ => None
     }
   }
@@ -64,7 +65,7 @@ module Make = (
     let generateInductiveHypothesis = (premise: Rule.t, offset: int): option<Rule.t> => {
       let (head, args) = HOTerm.strip(premise.conclusion)
       switch head {
-      | Symbol({name}) =>
+      | Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, name)}) =>
         let formerIndex = findFormerIndex(name, Array.length(args))
         Some({
           Rule.vars: premise.vars,
@@ -87,7 +88,8 @@ module Make = (
 
       let (conclusionHead, conclusionArgs) = HOTerm.strip(constructorRule.conclusion)
       let typeIndex = switch conclusionHead {
-      | Symbol({name}) => findFormerIndex(name, Array.length(conclusionArgs))
+      | Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, name)}) =>
+        findFormerIndex(name, Array.length(conclusionArgs))
       | _ => throw(Util.Unreachable("Constructor conclusion must have a Symbol head"))
       }
 
@@ -110,7 +112,10 @@ module Make = (
         {
           Rule.vars: [],
           premises: [],
-          conclusion: HOTerm.app(HOTerm.Symbol({name: str, constructor: false}), makeVarArgs(i)),
+          conclusion: HOTerm.app(
+            HOTerm.Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, str), constructor: false}),
+            makeVarArgs(i),
+          ),
         },
         ...subgoals,
       ],
@@ -126,7 +131,8 @@ module Make = (
   let extractInductiveType = (premise: Rule.t): option<(string, int)> => {
     let (head, args) = HOTerm.strip(premise.conclusion)
     switch head {
-    | Symbol({name}) => Some((name, Array.length(args)))
+    | Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, name), constructor: false}) =>
+      Some((name, Array.length(args)))
     | _ => None
     }
   }
@@ -192,7 +198,7 @@ module Make = (
           Rule.vars: [],
           premises: [],
           conclusion: HOTerm.app(
-            HOTerm.Symbol({name: "=", constructor: false}),
+            HOTerm.Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, "="), constructor: false}),
             [HOTerm.Var({idx: offset + idx}), arg],
           ),
         }
@@ -214,7 +220,7 @@ module Make = (
           Rule.vars: [],
           premises: [],
           conclusion: HOTerm.app(
-            HOTerm.Symbol({name: str, constructor: false}),
+            HOTerm.Symbol({name: Symbolic.Base.wrap(str), constructor: false}),
             makeVarArgs(arity),
           ),
         },

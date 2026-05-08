@@ -307,6 +307,37 @@
       -------- sucnatt
       (natt x (S n))
     </hol-inductive>
+    <hol-inductive id="index.html/mexp-hol" deps="index.html/myconfig">
+      ---- M-Empty
+      (M "")
+    s.
+      (M "$s")
+      -------- M-Surround
+      (M "( $s )")
+    s1.s2.
+      (M "$s1")
+      (M "$s2")
+      --------- M-Juxtapose
+      (M "$s1 $s2")
+    s.
+      (L "$s")
+      -------- N-Surr
+      (N "( $s )")
+
+      ---- L-Empty
+      (L "")
+    s1.s2.
+      (N "$s1")
+      (L "$s2")
+      --------- L-Juxtapose
+      (L "$s1 $s2")
+    </hol-inductive>
+    <hol-proof id="index.html/lexp-n-hol" deps="index.html/myconfig index.html/mexp-hol">
+      s.  (N "$s")
+      --------N-L
+      (L "$s")
+      s. sn |- ?
+    </hol-proof>
     <hol-comp id="index.html/baz" deps="index.html/myconfig">
     x.y.
       (/\ x y)

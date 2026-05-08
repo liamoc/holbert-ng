@@ -3,43 +3,8 @@ module IntCmp = Belt.Id.MakeComparable({
   let cmp = Pervasives.compare
 })
 
-module type ATOM = AtomDef.ATOM
-
-module DefaultAtom = {
-  module Base = AtomBase.Make({
-    type t = string
-  })
-  type t = string
-  type subst = Map.t<int, string>
-  let unify = (a, b, ~gen as _=?) =>
-    if a == b {
-      Seq.once(Map.make())
-    } else {
-      Seq.empty
-    }
-  let prettyPrint = (name, ~scope as _: array<string>) => name
-  let symbolRegexpString = "^([^\\s()]+)"
-  let parse = (str0, ~scope as _: array<string>, ~gen as _=?) => {
-    let str = str0->String.trimStart
-    let re = RegExp.fromStringWithFlags(symbolRegexpString, ~flags="y")
-    switch re->RegExp.exec(str) {
-    | None => Error("invalid symbol")
-    | Some(res) =>
-      switch RegExp.Result.matches(res) {
-      | [name] => Ok((name, String.sliceToEnd(str, ~start=RegExp.lastIndex(re))))
-      | _ => Error("invalid symbol")
-      }
-    }
-  }
-  let substitute = (name, _) => name
-  let substDeBruijn = (name, _, ~from as _=?) => name
-  let concrete = _ => true
-  let upshift = (t, _, ~from as _=?) => t
-  let coerce = _ => None
-  let reduce = t => t
-}
-
-module Make = (Atom: AtomDef.ATOM): {
+module type S = {
+  module Atom: AtomDef.ATOM_CHOICE
   type rec t =
     | Symbol({name: Atom.t, constructor: bool})
     | Var({idx: int})
@@ -64,7 +29,11 @@ module Make = (Atom: AtomDef.ATOM): {
   let unifyTerm: (t, t, subst, ~gen: option<gen>) => Seq.t<subst>
   let reduceSubst: subst => subst
   let rewrite: (t, t, t, ~subst: subst, ~gen: option<gen>) => (subst, t)
-} => {
+  let isEqualityAtom: Atom.t => bool
+}
+
+module Make = (Atom: AtomDef.ATOM_CHOICE): (S with module Atom = Atom) => {
+  module Atom = Atom
   type rec t =
     | Symbol({name: Atom.t, constructor: bool})
     | Var({idx: int})
@@ -245,6 +214,35 @@ module Make = (Atom: AtomDef.ATOM): {
     assert(subst->Belt.Map.Int.has(schematic) == false)
     subst->Belt.Map.Int.set(schematic, term)
   }
+  let rec strip = (term: t): (t, array<t>) => {
+    switch term {
+    | App({func, arg}) =>
+      let (peeledFunc, peeledArgs) = strip(func)
+      (peeledFunc, Array.concat(peeledArgs, [arg]))
+    | _ => (term, [])
+    }
+  }
+  let lower = (term: t): option<Atom.t> =>
+    switch term {
+    | Symbol(s) => Some(s.name)
+    | Var({idx}) => Atom.coerce(AtomBase.VarBase.wrap(Var({idx: idx})))
+    | _ =>
+      switch strip(term) {
+      | (Schematic({schematic}), ts) =>
+        ts
+        ->Array.map(t =>
+          switch t {
+          | Var({idx}) => Some(idx)
+          | _ => None
+          }
+        )
+        ->Util.Option.sequence
+        ->Option.flatMap(allowed =>
+          Atom.coerce(AtomBase.VarBase.wrap(Schematic({schematic, allowed})))
+        )
+      | _ => None
+      }
+    }
   let rec substitute = (term: t, subst: subst) =>
     switch term {
     | Schematic({schematic, _}) =>
@@ -264,14 +262,9 @@ module Make = (Atom: AtomDef.ATOM): {
         arg: substitute(arg, subst),
       })
     | Symbol({name, constructor}) => {
-        let symbolSubst = subst->Belt.Map.Int.reduce(Map.make(), (acc, k, v) => {
-          switch v {
-          | Symbol({name}) => {
-              acc->Map.set(k, name)
-              acc
-            }
-          | _ => acc
-          }
+        let symbolSubst = Map.make()
+        subst->Belt.Map.Int.forEach((k, v) => {
+          lower(v)->Option.map(v => Map.set(symbolSubst, k, v))->ignore
         })
         Symbol({name: Atom.substitute(name, symbolSubst), constructor})
       }
@@ -282,16 +275,7 @@ module Make = (Atom: AtomDef.ATOM): {
     switch term {
     | Symbol({name, constructor}) =>
       Symbol({
-        name: Atom.substDeBruijn(
-          name,
-          substs->Array.map(t =>
-            switch t {
-            | Symbol({name}) => Some(name)
-            | _ => None
-            }
-          ),
-          ~from,
-        ),
+        name: Atom.substDeBruijn(name, substs->Array.map(lower), ~from),
         constructor,
       })
     | Var({idx: var}) =>
@@ -399,14 +383,6 @@ module Make = (Atom: AtomDef.ATOM): {
   }
   let lam = (is: array<t>, g: t, js: array<t>): t => {
     lams(is->Array.length, app(g, js->Array.map(j => idx1'(is, j))))
-  }
-  let rec strip = (term: t): (t, array<t>) => {
-    switch term {
-    | App({func, arg}) =>
-      let (peeledFunc, peeledArgs) = strip(func)
-      (peeledFunc, Array.concat(peeledArgs, [arg]))
-    | _ => (term, [])
-    }
   }
   let rec devar = (subst: subst, term: t): t => {
     let (func, args) = strip(term)
@@ -570,7 +546,7 @@ module Make = (Atom: AtomDef.ATOM): {
         }
       | ((a, xs), (b, ys)) =>
         switch (a, b) {
-        | (Symbol(_) | Var(_), Symbol(_) | Var(_)) =>
+        | (Symbol(_), Symbol(_)) | (Var(_), Var(_)) =>
           unifyTerm(a, b, subst, ~gen)->Seq.flatMap(subst => unifyArray(xs, ys, subst, ~gen))
         | _ => Seq.empty
         }
@@ -630,6 +606,11 @@ module Make = (Atom: AtomDef.ATOM): {
       Array.fromInitializer(~length=Array.length(scope), i => Var({idx: i})),
     )
 
+  let isEqualityAtom = (AtomBase.AnyValue(tag, v): Atom.t): bool =>
+    switch tag {
+    | Symbolic.Base.Tag => v == "="
+    | _ => false
+    }
   let prettyPrintVar = (idx: int, scope: array<string>) =>
     switch scope[idx] {
     | Some(n) if Array.indexOf(scope, n) == idx => n
@@ -874,5 +855,3 @@ module Make = (Atom: AtomDef.ATOM): {
     }
   let mapTerms = (t, f) => f(t)
 }
-
-include Make(DefaultAtom)

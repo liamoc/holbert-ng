@@ -2,6 +2,7 @@ open Signatures
 open Method
 
 module MakeRewriteHOTerm = (
+  HOTerm: HOTerm.S,
   Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
   Config: {
     let keyword: string
@@ -16,7 +17,7 @@ module MakeRewriteHOTerm = (
   let extractEqualityTermsFromJudgment = (judgment: Judgment.t): option<(HOTerm.t, HOTerm.t)> => {
     let term: HOTerm.t = judgment
     switch HOTerm.strip(term) {
-    | (HOTerm.Symbol({name: "="}), args) if Array.length(args) == 2 =>
+    | (HOTerm.Symbol({name}), args) if HOTerm.isEqualityAtom(name) && Array.length(args) == 2 =>
       Some((args->Array.getUnsafe(0), args->Array.getUnsafe(1)))
     | _ => None
     }
@@ -247,8 +248,10 @@ module MakeRewriteHOTerm = (
 }
 
 module Rewrite = (
+  HOTerm: HOTerm.S,
   Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => MakeRewriteHOTerm(
+  HOTerm,
   Judgment,
   {
     let keyword = "rewrite"
@@ -257,8 +260,10 @@ module Rewrite = (
 )
 
 module RewriteReverse = (
+  HOTerm: HOTerm.S,
   Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => MakeRewriteHOTerm(
+  HOTerm,
   Judgment,
   {
     let keyword = "rewrite_reverse"
@@ -266,7 +271,10 @@ module RewriteReverse = (
   },
 )
 
-module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
+module ConstructorNeq = (
+  HOTerm: HOTerm.S,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
+) => {
   module Term = HOTerm
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
@@ -278,7 +286,8 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
   let constructorHead = (term: HOTerm.t): option<constructorHead> => {
     let (head, args) = HOTerm.strip(term)
     switch head {
-    | HOTerm.Symbol({name, constructor: true}) => Some({name, args})
+    | HOTerm.Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, name), constructor: true}) =>
+      Some({name, args})
     | _ => None
     }
   }
@@ -291,7 +300,7 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
   )> => {
     let (head, args) = HOTerm.strip(term)
     switch head {
-    | HOTerm.Symbol({name: "="}) if Array.length(args) == 2 =>
+    | HOTerm.Symbol({name}) if HOTerm.isEqualityAtom(name) && Array.length(args) == 2 =>
       switch (
         constructorHead(args->Array.getUnsafe(0)),
         constructorHead(args->Array.getUnsafe(1)),
@@ -309,7 +318,7 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
     | Some((lhs, rhs)) => Some({lhs, rhs, negated: false})
     | None =>
       switch HOTerm.strip(reduced) {
-      | (HOTerm.Symbol({name: "not"}), [inner]) =>
+      | (HOTerm.Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, "not")}), [inner]) =>
         extractConstructorEqualityFrom(inner)->Option.map(((lhs, rhs)) => {lhs, rhs, negated: true})
       | _ => None
       }
@@ -352,7 +361,10 @@ module ConstructorNeq = (Judgment: JUDGMENT with module Term := HOTerm and type 
     }
 }
 
-module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
+module ConstructorInj = (
+  HOTerm: HOTerm.S,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
+) => {
   module Rule = Rule.Make(HOTerm, Judgment)
   module Context = Context(HOTerm, Judgment)
   module Results = MethodResults(HOTerm)
@@ -416,8 +428,10 @@ module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type 
       let (lHead, lArgs) = args->Array.getUnsafe(0)->HOTerm.strip
       let (rHead, rArgs) = args->Array.getUnsafe(1)->HOTerm.strip
       switch (lHead, rHead) {
-      | (HOTerm.Symbol({name: ln, constructor: true}), HOTerm.Symbol({name: rn, constructor: true}))
-        if ln == rn && lArgs->Array.length == rArgs->Array.length =>
+      | (
+          HOTerm.Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, ln), constructor: true}),
+          HOTerm.Symbol({name: AtomBase.AnyValue(Symbolic.Base.Tag, rn), constructor: true}),
+        ) if ln == rn && lArgs->Array.length == rArgs->Array.length =>
         Some((ln, lArgs, rArgs))
       | _ => None
       }
@@ -427,7 +441,7 @@ module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type 
   let apply = (ctx: Context.t, j: Judgment.t, _gen: HOTerm.gen, _f: Rule.t => 'a) => {
     let ret = Dict.make()
     switch j->Judgment.reduce->HOTerm.strip {
-    | (HOTerm.Symbol({name: "="}), [lhs, rhs]) =>
+    | (HOTerm.Symbol({name}), [lhs, rhs]) if HOTerm.isEqualityAtom(name) =>
       ctx
       ->Context.facts
       ->Dict.forEachWithKey((fact, name) => {
@@ -452,7 +466,7 @@ module ConstructorInj = (Judgment: JUDGMENT with module Term := HOTerm and type 
   let check = (it: t<'a>, ctx: Context.t, goal: Judgment.t, _f: ('a, Rule.t) => 'b) => {
     switch (ctx->Context.facts->Dict.get(it.source), goal->Judgment.reduce->HOTerm.strip) {
     | (None, _) => Error(`Cannot find equality '${it.source}'`)
-    | (Some(fact), (HOTerm.Symbol({name: "="}), [lhs, rhs])) =>
+    | (Some(fact), (HOTerm.Symbol({name}), [lhs, rhs])) if HOTerm.isEqualityAtom(name) =>
       switch extractConstructorEquality(fact.conclusion) {
       | None => Error(`'${it.source}' is not a constructor equality`)
       | Some((_cName, lArgs, rArgs)) =>

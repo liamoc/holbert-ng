@@ -1,7 +1,4 @@
 open Zora
-open HOTerm
-
-module Util = TestUtil.MakeTerm(HOTerm)
 
 module Symbol = AtomDef.MakeAtomChoiceAndView(
   Symbolic.Atom,
@@ -9,6 +6,8 @@ module Symbol = AtomDef.MakeAtomChoiceAndView(
   AtomDef.EmptyAtomChoice,
   AtomDef.EmptyAtomChoiceView,
 )
+module RegularHOTerm = HOTerm.Make(Symbol.Atom)
+module Util = TestUtil.MakeTerm(RegularHOTerm)
 module StringSymbol = AtomDef.MakeAtomChoiceAndView(
   StringA.Atom,
   StringA.AtomView,
@@ -27,13 +26,16 @@ let wrapSymbol = s => StringHOTerm.Symbol({
 })
 
 let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=false) => {
-  let gen = HOTerm.makeGen()
-  let (a, _) = HOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
-  let (b, _) = HOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
+  let gen = RegularHOTerm.makeGen()
+  let (a, _) = RegularHOTerm.parse(at, ~scope=[], ~gen)->Result.getExn
+  let (b, _) = RegularHOTerm.parse(bt, ~scope=[], ~gen)->Result.getExn
   try {
-    let res0 = HOTerm.unifyTerm(a, b, HOTerm.emptySubst, ~gen=Some(gen))->Seq.head->Option.getExn
+    let res0 =
+      RegularHOTerm.unifyTerm(a, b, RegularHOTerm.emptySubst, ~gen=Some(gen))
+      ->Seq.head
+      ->Option.getExn
     let res = if reduce {
-      HOTerm.reduceSubst(res0)
+      RegularHOTerm.reduceSubst(res0)
     } else {
       res0
     }
@@ -58,7 +60,7 @@ let testUnify0 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=f
       })
     }
   } catch {
-  | HOTerm.UnifyFail(failed) =>
+  | RegularHOTerm.UnifyFail(failed) =>
     t->fail(
       ~msg="unification failed: " ++
       TestUtil.stringifyExn(a) ++
@@ -73,9 +75,10 @@ let testUnify = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?, ~reduce=fa
   testUnify0(t, at, bt, ~subst?, ~msg?, ~reduce)
   testUnify0(t, bt, at, ~subst?, ~msg?, ~reduce)
 }
+let s = s => RegularHOTerm.Symbol({name: Symbolic.Base.wrap(s), constructor: false})
 zoraBlock("parse symbol", t => {
-  t->block("single char", t => t->Util.testParse("x", Symbol({name: "x", constructor: false})))
-  t->block("multi char", t => t->Util.testParse("xyz", Symbol({name: "xyz", constructor: false})))
+  t->block("single char", t => t->Util.testParse("x", s("x")))
+  t->block("multi char", t => t->Util.testParse("xyz", s("xyz")))
 })
 
 zoraBlock("parse var", t => {
@@ -93,8 +96,8 @@ zoraBlock("parse application", t => {
     t->Util.testParse(
       "(a b)",
       App({
-        func: Symbol({name: "a", constructor: false}),
-        arg: Symbol({name: "b", constructor: false}),
+        func: s("a"),
+        arg: s("b"),
       }),
     )
   })
@@ -103,10 +106,10 @@ zoraBlock("parse application", t => {
       "(a b c)",
       App({
         func: App({
-          func: Symbol({name: "a", constructor: false}),
-          arg: Symbol({name: "b", constructor: false}),
+          func: s("a"),
+          arg: s("b"),
         }),
-        arg: Symbol({name: "c", constructor: false}),
+        arg: s("c"),
       }),
     )
   })
@@ -114,7 +117,7 @@ zoraBlock("parse application", t => {
     t->Util.testParse(
       "(a \\1 ?1)",
       App({
-        func: App({func: Symbol({name: "a", constructor: false}), arg: Var({idx: 1})}),
+        func: App({func: s("a"), arg: Var({idx: 1})}),
         arg: Schematic({schematic: 1}),
       }),
     )
@@ -148,7 +151,7 @@ zoraBlock("parse lambda", t => {
     )
   })
   t->block("constructor", t => {
-    t->Util.testParse("@cons", Symbol({name: "cons", constructor: true}))
+    t->Util.testParse("@cons", Symbol({name: Symbolic.Base.wrap("cons"), constructor: true}))
   })
   // TODO: test if remaining strings are returned correctly
 })
@@ -190,7 +193,7 @@ zoraBlock("string HOTerm functor", t => {
     )
   })
   t->block("unify string atom", t => {
-    let parse = input => t->StringUtil.parse(input)
+    let parse = (input, ~scope=[]) => t->StringUtil.parse(input, ~scope)
     let emptySubst = StringHOTerm.emptySubst
     let substAdd = StringHOTerm.substAdd
     t->equal(
@@ -215,6 +218,7 @@ zoraBlock("string HOTerm functor", t => {
 
 zoraBlock("unify test", t => {
   let testUnifyFail = Util.testUnifyFailString
+  open RegularHOTerm
   t->block("symbols", t => {
     let x = "x"
     let y = "y"
@@ -233,7 +237,7 @@ zoraBlock("unify test", t => {
   t->block("flex-rigid", t => {
     let x = "?0"
     let y = "y"
-    t->testUnify(x, y, ~subst=emptySubst->substAdd(0, Symbol({name: "y", constructor: false})))
+    t->testUnify(x, y, ~subst=RegularHOTerm.emptySubst->RegularHOTerm.substAdd(0, s("y")))
   })
   t->block("flex-rigid2", t => {
     let x = "(x. ?0 x)"
@@ -247,26 +251,16 @@ zoraBlock("unify test", t => {
         0,
         Lam({
           name: "x",
-          body: App({func: Symbol({name: "y", constructor: false}), arg: Var({idx: 0})}),
+          body: App({func: s("y"), arg: Var({idx: 0})}),
         }),
       ),
     )
-    t->testUnify(
-      x,
-      y,
-      ~reduce=true,
-      ~subst=emptySubst->substAdd(0, Symbol({name: "y", constructor: false})),
-    )
+    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, s("y")))
   })
   t->block("flex-rigid3", t => {
     let x = "(?0 \\10)"
     let y = "(fst \\10)"
-    t->testUnify(
-      x,
-      y,
-      ~reduce=true,
-      ~subst=emptySubst->substAdd(0, Symbol({name: "fst", constructor: false})),
-    )
+    t->testUnify(x, y, ~reduce=true, ~subst=emptySubst->substAdd(0, s("fst")))
   })
   t->block("flex-rigid", t => {
     let x = "(?0 \\10)"
@@ -279,8 +273,8 @@ zoraBlock("unify test", t => {
         Lam({
           name: "x",
           body: App({
-            func: Symbol({name: "r", constructor: false}),
-            arg: App({func: Symbol({name: "fst", constructor: false}), arg: Var({idx: 0})}),
+            func: s("r"),
+            arg: App({func: s("fst"), arg: Var({idx: 0})}),
           }),
         }),
       ),
@@ -294,7 +288,7 @@ zoraBlock("unify test", t => {
       y,
       ~subst=emptySubst->substAdd(
         0,
-        HOTerm.parse("(x. (r (fst x)))", ~scope=[])->Result.getExn->Pair.first,
+        RegularHOTerm.parse("(x. (r (fst x)))", ~scope=[])->Result.getExn->Pair.first,
       ),
     )
   })
@@ -306,7 +300,7 @@ zoraBlock("unify test", t => {
       y,
       ~subst=emptySubst->substAdd(
         1,
-        HOTerm.parse("(x. x. (r (q \\0 \\1)))", ~scope=[])->Result.getExn->Pair.first,
+        RegularHOTerm.parse("(x. x. (r (q \\0 \\1)))", ~scope=[])->Result.getExn->Pair.first,
       ),
     )
   })
@@ -318,7 +312,7 @@ zoraBlock("unify test", t => {
       y,
       ~subst=emptySubst->substAdd(
         1,
-        HOTerm.parse("(x. x. (r (q (snd \\0) \\1)))", ~scope=[])->Result.getExn->Pair.first,
+        RegularHOTerm.parse("(x. x. (r (q (snd \\0) \\1)))", ~scope=[])->Result.getExn->Pair.first,
       ),
     )
   })
@@ -357,12 +351,7 @@ zoraBlock("unify test", t => {
     t->testUnifyFail(a, b)
   })
   t->block("eta", t => {
-    t->testUnify(
-      "(x. ?0 x)",
-      "a",
-      ~reduce=true,
-      ~subst=emptySubst->substAdd(0, Symbol({name: "a", constructor: false})),
-    )
+    t->testUnify("(x. ?0 x)", "a", ~reduce=true, ~subst=emptySubst->substAdd(0, s("a")))
   })
   t->block("divergent", _t => {
     let _divergent = "((x. x x) (x. x x))"

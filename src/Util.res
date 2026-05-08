@@ -168,4 +168,12 @@ module Option = {
     | Some(a) => a
     | None => f()
     }
+  let sequence = (xs: array<option<'a>>): option<array<'a>> => {
+    let filtered = xs->Array.keepSome
+    if Array.length(xs) == Array.length(filtered) {
+      Some(filtered)
+    } else {
+      None
+    }
+  }
 }

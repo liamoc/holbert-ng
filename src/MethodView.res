@@ -162,8 +162,11 @@ module LemmaView = (
     }
 }
 
-module RewriteView = (Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t) => {
-  module Method = Rewrite(Judgment)
+module RewriteView = (
+  HOTerm: HOTerm.S,
+  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
+) => {
+  module Method = Rewrite(HOTerm, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
@@ -203,9 +206,10 @@ module RewriteView = (Judgment: JUDGMENT with module Term := HOTerm and type t =
 }
 
 module RewriteReverseView = (
+  HOTerm: HOTerm.S,
   Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => {
-  module Method = RewriteReverse(Judgment)
+  module Method = RewriteReverse(HOTerm, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
@@ -245,9 +249,10 @@ module RewriteReverseView = (
 }
 
 module ConstructorNeqView = (
+  HOTerm: HOTerm.S,
   Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => {
-  module Method = ConstructorNeq(Judgment)
+  module Method = ConstructorNeq(HOTerm, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
@@ -271,9 +276,10 @@ module ConstructorNeqView = (
 }
 
 module ConstructorInjView = (
+  HOTerm: HOTerm.S,
   Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
 ) => {
-  module Method = ConstructorInj(Judgment)
+  module Method = ConstructorInj(HOTerm, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<HOTerm.meta>,
