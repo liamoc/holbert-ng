@@ -200,6 +200,28 @@ zoraBlock("string HOTerm functor", t => {
       StringHOTerm.unify(parse(`"a ?0() c"`), parse(`"a b c"`))->Seq.head,
       Some(emptySubst->substAdd(0, wrapString([String("b")]))),
     )
+    t->block(
+      "ahhhhhhhhhh",
+      t => {
+        let scope = ["s"]
+        let gen = StringHOTerm.makeGen()
+        let schemas =
+          scope->Array.map(m => StringHOTerm.place(gen->StringHOTerm.fresh(~replacing=m), ~scope))
+        let lhs = parse(`("$s")`, ~scope)
+        let rhs = parse(`("?0(0)")`)
+        let res = StringHOTerm.unify(lhs, rhs)->Seq.head
+        t->equal(res, Some(emptySubst->substAdd(0, wrapString([Var({idx: 0})]))))
+        let sub = res->Option.getExn
+        Console.log(StringHOTerm.prettyPrintSubst(sub, ~scope))
+        let deBruijnSub = schemas->Array.map(t => StringHOTerm.substitute(t, sub))
+        // fails schemas[0] == (?0(0) \0) => deBruijnSub[0] == ("$0" \0)
+        t->equal(deBruijnSub[0], Some(wrapString([Var({idx: 0})])))
+        // throws currently due to failure to `lower` ("$0" \0) into string
+        let newLhs = StringHOTerm.substDeBruijn(lhs, deBruijnSub)
+        t->equal(newLhs, lhs)
+      },
+    )
+
     t->equal(
       StringHOTerm.unify(parse(`(P "?1() a" "?1()")`), parse(`(P "a ?1()" "a")`))->Seq.head,
       Some(emptySubst->substAdd(1, wrapString([String("a")]))),
