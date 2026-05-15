@@ -43,33 +43,47 @@ module Make = (
       }
     )
 
-  @react.componentWithProps
-  let rec make = ({term, scope}) =>
-    switch term {
-    | Compound({subexps: bits}) =>
-      <span className="term-compound">
-        {bits
-        ->Array.mapWithIndex((t, i) => React.createElement(make, withKey({term: t, scope}, i)))
-        ->intersperse
-        ->parenthesise
-        ->React.array}
-      </span>
-    | Var({idx}) => viewVar({idx, scope})
-    | Atom(atom) =>
-      <span className="term-const">
-        <AtomView atom scope />
-      </span>
-    | Schematic({schematic: s, allowed: vs}) =>
-      <span className="term-schematic">
-        {React.string("?")}
-        {React.int(s)}
-        <span className="term-schematic-telescope">
-          {vs
-          ->Array.mapWithIndex((v, i) => React.createElement(viewVar, withKey({idx: v, scope}, i)))
+  module rec Inner: {
+    @react.component
+    let make: (~term: SExp.t, ~scope: array<string>, ~parens: bool=?) => React.component
+  } = {
+    @react.component
+    let make = (~term: SExp.t, ~scope: array<string>, ~parens: bool=true) =>
+      switch term {
+      | Compound({subexps: bits}) =>
+        <span className="term-compound">
+          {bits
+          ->Array.mapWithIndex((t, i) => <Inner term={t} scope key={i->Int.toString} />)
           ->intersperse
-          ->parenthesise
+          ->(a =>
+            if parens {
+              parenthesise(a)
+            } else {
+              a
+            })
           ->React.array}
         </span>
-      </span>
-    }
+      | Var({idx}) => viewVar({idx, scope})
+      | Atom(atom) =>
+        <span className="term-const">
+          <AtomView atom scope />
+        </span>
+      | Schematic({schematic: s, allowed: vs}) =>
+        <span className="term-schematic">
+          {React.string("?")}
+          {React.int(s)}
+          <span className="term-schematic-telescope">
+            {vs
+            ->Array.mapWithIndex((v, i) =>
+              React.createElement(viewVar, withKey({idx: v, scope}, i))
+            )
+            ->intersperse
+            ->parenthesise
+            ->React.array}
+          </span>
+        </span>
+      }
+  }
+  @react.componentWithProps
+  let make = ({term, scope}) => <Inner term scope parens={false} />
 }

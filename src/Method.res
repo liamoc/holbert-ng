@@ -201,7 +201,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
                         // pollute TERM with another method for printing bare meta
                         let metaWithoutDot =
                           metaS->String.slice(~start=0, ~end=String.length(metaS) - 1)
-                        `${metaWithoutDot} |-> ${Term.prettyPrint(x, ~scope=ctx.fixes)}`
+                        `${metaWithoutDot} ↦ ${Term.prettyPrint(x, ~scope=ctx.fixes)}`
                       },
                     )
                     ->Array.join(", ")
