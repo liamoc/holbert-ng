@@ -32,11 +32,11 @@ function HolComp(RComp : any) {
 			this.root.render(
 				<Tag content={this.state} imports={this.gatherImports()} 
 					onChange={ (state, exports) => {
+						this.state = state;
 						if (exports) {
 							this.exports = exports
-							signal(null)							
+							signal(state)							
 						}
-						this.state = state;
 						this.render(signal)
 					}} 				
 				/>
@@ -59,6 +59,7 @@ function HolComp(RComp : any) {
 				this.dependencyChanged = (_depName, _comp) => {
 					this.render(signal)
 				};
+				console.log("Loaded", this);
 				loaded(null)
 				this.loaded = true;
 				this.render(signal)
@@ -70,7 +71,7 @@ function HolComp(RComp : any) {
 	
 }
 
-window.localStorage.clear()
+//window.localStorage.clear()
 ComponentGraph.setup({
   "hol-comp": HolComp(AxiomS),
 	"hol-inductive": HolComp(InductiveS),

@@ -73,7 +73,6 @@ module Make = (
     }
 
     <SidebarContext sidebarRef>
-      <h3> {React.string("Theorem")} </h3>
       <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
       </RuleView>

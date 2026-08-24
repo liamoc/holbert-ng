@@ -6,27 +6,46 @@ export interface Component {
 
 let toInitialise: Array<string> = [];
 
+function fetchAsDocument(url: string): Promise<{ doc: Document; contentType: string }> {
+	return new Promise((resolve, reject) => {
+		const xhr = new XMLHttpRequest();
+		xhr.open("GET", url);
+		xhr.responseType = "document";
+		xhr.onload = () => {
+			if (xhr.responseXML) {
+				resolve({ doc: xhr.responseXML, contentType: xhr.getResponseHeader("content-type") || "" });
+			} else {
+				reject(new Error(`Failed to parse document at ${url}`));
+			}
+		};
+		xhr.onerror = () => reject(new Error(`Network error fetching ${url}`));
+		xhr.send();
+	});
+}
+
 export async function load(url: string): Promise<Handler> {
 	if (url in database) {
+		console.log(database[url],"URL");
 		return database[url];
 	} else {
 		let requestURI = url.split('/').slice(0, -1).join("/");
-		let response = await fetch(requestURI);
-		let body = await response.text();
-		const parser = new DOMParser();
-		const htmldoc = parser.parseFromString(body, "text/html")
-		/*let host = document.createElement("div");
-		host.style.border = "1px solid red";
-		document.body.appendChild(host);
-		let shadow = host.attachShadow({ mode: "open" });
-		for (let x of knownTags) {
-		for (let y  of htmldoc.querySelectorAll(x)) {
-				shadow.appendChild(document.adoptNode(y));        
-			}
-		}*/
+		const { doc, contentType } = await fetchAsDocument(requestURI);
+		const isXml = /\bxml\b/i.test(contentType) && !/html/i.test(contentType);
+		
+		let htmldoc: Document;
+		
+		if (isXml) {
+			const { doc: xsltDoc } = await fetchAsDocument("/default.xsl"); // one fetch for the stylesheet, unavoidable — it's a second resource
+			const xsltProcessor = new XSLTProcessor();
+			xsltProcessor.importStylesheet(xsltDoc);
+			htmldoc = xsltProcessor.transformToDocument(doc);
+		} else {
+			htmldoc = doc;
+		}
+				
 		for (let x of knownTags) {
 			for (let y of htmldoc.querySelectorAll(x)) {
-				window.customElements.upgrade(document.adoptNode(y))
+				window.customElements.upgrade(document.adoptNode(y));
 			}
 		}
 		while (toInitialise.length) {
@@ -120,7 +139,7 @@ class Handler {
 					if (v != null && v != undefined) {
 						deps2[dep] = v;
 					}
-				}
+				}				
 				this.component = new maker(textual, deps2,
 					(msg) => { this.notifySubscribers(msg) }, (msg) => {
 						this.status = "ready";
@@ -153,6 +172,7 @@ export function setup(
 				let id = this.attributes.getNamedItem("id")?.value ?? "default";
 				toInitialise.push(id);
 				let deps = (this.attributes.getNamedItem("deps")?.value ?? "").split(" ");
+				console.log(deps);			
 				let text = window.localStorage.getItem(id) ?? this.innerHTML;
 				this.innerHTML = "loading";
 				if (this.id in database) {

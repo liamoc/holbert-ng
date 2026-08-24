@@ -23,6 +23,11 @@ module Make = (
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
       <span className="inline-rule">
         <span className="rule-rulename-defined"> {props.children} </span>
+        {if premises->Array.length > 0 {
+          <span className="symbol symbol-turnstile symbol-bold"> {React.string("(")} </span>
+        } else {
+          React.string("")
+        }}
         <ScopeView scope=vars />
         {React.array(
           premises
@@ -53,6 +58,11 @@ module Make = (
           React.string("")
         }}
         <JudgmentView judgment={conclusion} scope={scope} />
+        {if premises->Array.length > 0 {
+          <span className="symbol symbol-turnstile symbol-bold"> {React.string(")")} </span>
+        } else {
+          React.string("")
+        }}
       </span>
     }
   }
@@ -78,7 +88,7 @@ module Make = (
                   </td>
                 ),
               )}
-              <td className="rule-cell rule-spacer" />
+              //<td className="rule-cell rule-spacer" />
               <td rowSpan=3 className="rule-cell rule-rulebox">
                 <span className="rule-rulename-defined"> {props.children} </span>
               </td>
@@ -90,8 +100,7 @@ module Make = (
             </tr>
             <tr>
               <td
-                colSpan={premises->Array.length + 1}
-                className="rule-cell rule-hypothetical-conclusion"
+                colSpan={premises->Array.length} className="rule-cell rule-hypothetical-conclusion"
               >
                 <JudgmentView judgment={conclusion} scope={scope} />
               </td>
@@ -111,22 +120,25 @@ module Make = (
               <td className="rule-cell rule-binderbox" rowSpan=2>
                 <ScopeView scope=vars />
               </td>
-              {React.array(
-                premises->Array.mapWithIndex((p, i) =>
-                  <td className="rule-cell rule-premise" key={String.make(i)}>
-                    <Premise rule={p} scope={scope} key={String.make(i)} style={props.style}>
-                      {React.string("")}
-                    </Premise>
-                  </td>
-                ),
-              )}
-              <td className="rule-cell rule-spacer" />
+              {if premises->Array.length == 0 {
+                <td className="rule-cell rule-spacer" />
+              } else {
+                React.array(
+                  premises->Array.mapWithIndex((p, i) =>
+                    <td className="rule-cell rule-premise" key={String.make(i)}>
+                      <Premise rule={p} scope={scope} key={String.make(i)} style={props.style}>
+                        {React.string("")}
+                      </Premise>
+                    </td>
+                  ),
+                )
+              }}
               <td rowSpan=2 className="rule-cell rule-rulebox">
                 <span className="rule-rulename-defined"> {props.children} </span>
               </td>
             </tr>
             <tr>
-              <td colSpan={premises->Array.length + 1} className="rule-cell rule-conclusion">
+              <td colSpan={premises->Array.length} className="rule-cell rule-conclusion">
                 <JudgmentView judgment={conclusion} scope={scope} />
               </td>
             </tr>

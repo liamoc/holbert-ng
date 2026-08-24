@@ -278,12 +278,13 @@ module Make = (
   }
 
   let make = props => {
+    Console.log(props)
     <div
       className={"axiom-set axiom-set-"->String.concat(
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
       )}
     >
-      {Dict.toArray(props.content->Dict.copy->Dict.assign(derived(props.content)))
+      {Dict.toArray(props.content)
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
@@ -295,6 +296,27 @@ module Make = (
         </RuleView>
       )
       ->React.array}
+      <section className="block">
+        <details>
+          <summary>
+            <header>
+              <h1> {React.string("Derived Rules")} </h1>
+            </header>
+          </summary>
+          {Dict.toArray(derived(props.content))
+          ->Array.mapWithIndex(((n, r), i) =>
+            <RuleView
+              rule={r}
+              scope={[]}
+              key={String.make(i)}
+              style={props.imports.ruleStyle->Option.getOr(Hybrid)}
+            >
+              {React.string(n)}
+            </RuleView>
+          )
+          ->React.array}
+        </details>
+      </section>
     </div>
   }
 }
