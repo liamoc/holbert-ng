@@ -120,16 +120,43 @@ module Make = (
     switch props.proof {
     | Proof.Checked({fixes, assumptions, method, rule}) => {
         let scope = Array.concat(fixes, props.scope)
-        <>
-          <ScopeView scope=fixes />
-          <ul className="proof-assumptions">
-            {Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
-              <li key={n}>
-                <RuleView rule=r style=props.ruleStyle scope> {React.string(n)} </RuleView>
-              </li>
-            })->React.array}
-          </ul>
+        <div className="proof-step">
+          {if fixes->Array.length != 0 {
+            <>
+              <span className="proof-text"> {React.string("For any ")} </span>
+              <ScopeView scope=fixes />
+            </>
+          } else {
+            <> </>
+          }}
+          {if assumptions->Array.length != 0 {
+            <>
+              <span className="proof-text">
+                {React.string(
+                  if fixes->Array.length != 0 {
+                    "where:"
+                  } else {
+                    "Assuming:"
+                  },
+                )}
+              </span>
+              <ul
+                className={"proof-assumptions proof-assumptions-"->String.concat(
+                  String.make(props.ruleStyle),
+                )}
+              >
+                {Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
+                  <li key={n}>
+                    <RuleView rule=r style=props.ruleStyle scope> {React.string(n)} </RuleView>
+                  </li>
+                })->React.array}
+              </ul>
+            </>
+          } else {
+            <> </>
+          }}
           <div className="proof-show">
+            <span className="proof-text"> {React.string("Show: ")} </span>
             <JudgmentView judgment={rule.conclusion} scope />
             {switch method {
             | Goal(options) =>
@@ -197,7 +224,7 @@ module Make = (
               )
             }}
           </div>
-        </>
+        </div>
       }
     | Proof.ProofError({raw: _, rule: _, msg}) => <div className="error"> {React.string(msg)} </div>
     }

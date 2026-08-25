@@ -43,7 +43,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
       <div>
         <b> {React.string("by ")} </b>
         {React.string(props.method.ruleName)}
-        <ul>
+        <ul className="subgoals">
           {props.method.subgoals
           ->Array.mapWithIndex((sg, i) => {
             <li key={String.make(i)}>
@@ -87,7 +87,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
       <div>
         <b> {React.string("elim ")} </b>
         {React.string(`${props.method.ruleName} ${props.method.elimName}`)}
-        <ul>
+        <ul className="subgoals">
           {props.method.subgoals
           ->Array.mapWithIndex((sg, i) => {
             <li key={String.make(i)}>
@@ -186,7 +186,7 @@ module RewriteView = (
       <div>
         <b> {React.string("rewrite ")} </b>
         {React.string(props.method.equalityName)}
-        <ul>
+        <ul className="subgoals">
           <li>
             {React.createElement(
               subRender,
@@ -229,7 +229,7 @@ module RewriteReverseView = (
       <div>
         <b> {React.string("rewrite_reverse ")} </b>
         {React.string(props.method.equalityName)}
-        <ul>
+        <ul className="subgoals">
           <li>
             {React.createElement(
               subRender,

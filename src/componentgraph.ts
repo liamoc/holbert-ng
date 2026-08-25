@@ -171,7 +171,10 @@ export function setup(
 				super();
 				let id = this.attributes.getNamedItem("id")?.value ?? "default";
 				toInitialise.push(id);
-				let deps = (this.attributes.getNamedItem("deps")?.value ?? "").split(" ");
+				let deps = (this.attributes.getNamedItem("deps")?.value ?? "")
+					.trim()
+					.split(/\s+/)
+					.filter(Boolean);
 				console.log(deps);			
 				let text = window.localStorage.getItem(id) ?? this.innerHTML;
 				this.innerHTML = "loading";
