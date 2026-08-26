@@ -8,6 +8,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     content: style,
     imports: Ports.t,
     onChange: (style, ~exports: Ports.t=?) => unit,
+    reset: unit => unit,
   }
   let deserialise = str =>
     switch str {

@@ -13,6 +13,7 @@ module Make = (
     content: state,
     imports: Ports.t,
     onChange: (state, ~exports: Ports.t=?) => unit,
+    reset: unit => unit,
   }
 
   let serialise = (state: state) => {

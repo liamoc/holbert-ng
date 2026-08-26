@@ -42,7 +42,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     props => {
       <div>
         <b> {React.string("by ")} </b>
-        {React.string(props.method.ruleName)}
+        <span className="proof-ruleName"> {React.string(props.method.ruleName)} </span>
         <ul className="subgoals">
           {props.method.subgoals
           ->Array.mapWithIndex((sg, i) => {
@@ -86,7 +86,9 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     props => {
       <div>
         <b> {React.string("elim ")} </b>
-        {React.string(`${props.method.ruleName} ${props.method.elimName}`)}
+        <span className="proof-ruleName">
+          {React.string(`${props.method.ruleName} ${props.method.elimName}`)}
+        </span>
         <ul className="subgoals">
           {props.method.subgoals
           ->Array.mapWithIndex((sg, i) => {
@@ -185,7 +187,7 @@ module RewriteView = (
     props => {
       <div>
         <b> {React.string("rewrite ")} </b>
-        {React.string(props.method.equalityName)}
+        <span className="proof-ruleName"> {React.string(props.method.equalityName)} </span>
         <ul className="subgoals">
           <li>
             {React.createElement(
@@ -228,7 +230,7 @@ module RewriteReverseView = (
     props => {
       <div>
         <b> {React.string("rewrite_reverse ")} </b>
-        {React.string(props.method.equalityName)}
+        <span className="proof-ruleName"> {React.string(props.method.equalityName)} </span>
         <ul className="subgoals">
           <li>
             {React.createElement(

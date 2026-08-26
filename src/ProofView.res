@@ -157,7 +157,9 @@ module Make = (
           }}
           <div className="proof-show">
             <span className="proof-text"> {React.string("Show: ")} </span>
-            <JudgmentView judgment={rule.conclusion} scope />
+            <span className="proof-judgement">
+              <JudgmentView judgment={rule.conclusion} scope />
+            </span>
             {switch method {
             | Goal(options) =>
               let portal = switch sidebarRef.current->Nullable.toOption {

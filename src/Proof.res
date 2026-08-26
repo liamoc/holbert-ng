@@ -113,11 +113,14 @@ module Make = (
     let (nFixes, nVars) = (Array.length(prf.fixes), Array.length(rule.vars))
     if Array.length(prf.fixes) == Array.length(rule.vars) {
       let (nAssumptions, nPremises) = (Array.length(prf.assumptions), Array.length(rule.premises))
+
       if nAssumptions == nPremises {
         let newFacts = Dict.fromArray(Belt.Array.zip(prf.assumptions, rule.premises))
         Ok({
           Context.fixes: rule.vars->Array.concat(ctx.fixes),
-          localFacts: Dict.copy(ctx.localFacts)->Dict.assign(newFacts),
+          localFacts: Dict.mapValues(ctx.localFacts, r => {
+            Rule.upshift(r, rule.vars->Array.length)
+          })->Dict.assign(newFacts),
           globalFacts: ctx.globalFacts,
         })
       } else {
@@ -172,13 +175,14 @@ module Make = (
           method: Goal(
             gen => {
               Method.apply(ctx', rule.conclusion, gen, rl => {
+                Console.log(ctx'.localFacts->Dict.toArray->Array.length)
                 check(
                   ctx',
                   {
                     fixes: rl.vars,
                     method: None,
                     assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
-                      Int.toString(i)
+                      Int.toString(i + ctx'.localFacts->Dict.toArray->Array.length)
                     ),
                   },
                   rl,

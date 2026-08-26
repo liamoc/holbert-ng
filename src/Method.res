@@ -171,11 +171,6 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
         None
       } else {
         let substs = Judgment.unify(res.conclusion, j, ~gen)->Seq.take(seqSizeLimit)->Seq.toArray
-        if key == "L-Juxtapose" {
-          Console.log(Judgment.prettyPrint(j, ~scope=[]))
-          Console.log(Judgment.prettyPrint(res.conclusion, ~scope=[]))
-          Console.log()
-        }
         let new = {
           ruleName: key,
           instantiation: insts,

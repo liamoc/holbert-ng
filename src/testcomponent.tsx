@@ -15,6 +15,7 @@ function HolComp(RComp : any) {
 		loaded: boolean;
 		root : ReactDOM.Root;
 		state: any;
+		original_str: string;
 		toString() {
 			return RComp.serialise(this.state)
 		}
@@ -27,22 +28,25 @@ function HolComp(RComp : any) {
 			}
 			return ret
 		}
-		render(signal : (msg: any) => void) {
+		render(signal : (msg: any) => void, reset: (msg :any) => void) {
 			let Tag = RComp.make			
 			this.root.render(
 				<Tag content={this.state} imports={this.gatherImports()} 
+					reset={ () => {
+						reset(0)
+					}}
 					onChange={ (state, exports) => {
 						this.state = state;
 						if (exports) {
 							this.exports = exports
 							signal(state)							
 						}
-						this.render(signal)
+						this.render(signal,reset)
 					}} 				
 				/>
 			)
 		}
-		constructor(str: string,deps : Record<string,Component>, signal : (msg: any) => void, loaded : (msg: any) => void, view? : HTMLElement) {
+		constructor(str: string, deps : Record<string,Component>, signal : (msg: any) => void, loaded : (msg: any) => void, reset : (msg : any) => void, view? : HTMLElement) {
 			this.deps = deps
 			this.loaded = false
 			if (view != null) { 
@@ -57,12 +61,12 @@ function HolComp(RComp : any) {
 				this.exports = foo._0[1]
 				this.state = foo._0[0]
 				this.dependencyChanged = (_depName, _comp) => {
-					this.render(signal)
+					this.render(signal, reset)
 				};
 				console.log("Loaded", this);
 				loaded(null)
 				this.loaded = true;
-				this.render(signal)
+				this.render(signal, reset)
 			} else {
 				view.innerHTML = foo._0
 			}

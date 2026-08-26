@@ -683,7 +683,7 @@ module Make = (Atom: AtomDef.ATOM_CHOICE): (S with module Atom = Atom) => {
       let matches =
         String.slice(str, ~start=0, ~end=len) == name &&
           switch str->String.charAt(len) {
-          | "" | " " | "\t" | "\n" | "\r" | "(" | ")" => true
+          | "" | " " | "\t" | "\n" | "\r" | "[" | "]" | "(" | ")" => true
           | _ => false
           }
       if result.contents == None && matches {
@@ -848,9 +848,9 @@ module Make = (Atom: AtomDef.ATOM_CHOICE): (S with module Atom = Atom) => {
   }
 
   let concrete = t =>
-    switch t {
-    | Schematic(_) => false
-    | Symbol({name}) => Atom.concrete(name)
+    switch t->strip {
+    | (Schematic(_), _) => false
+    | (Symbol({name}), _) => Atom.concrete(name)
     | _ => true
     }
   let mapTerms = (t, f) => f(t)

@@ -6,6 +6,7 @@ module TextArea = (Underlying: COMPONENT) => {
     content: result<Underlying.state, (string, string)>,
     imports: Ports.t,
     onChange: (result<Underlying.state, (string, string)>, ~exports: Ports.t=?) => unit,
+    reset: unit => unit,
   }
   type state = result<Underlying.state, (string, string)>
 
@@ -51,6 +52,7 @@ module TextArea = (Underlying: COMPONENT) => {
           <Underlying
             content={us}
             imports={props.imports}
+            reset={props.reset}
             /* onLoad={(~exports, ~string=?) =>
              props.onLoad(~exports, ~string=string->Option.getOr(Underlying.serialise(us)))} */
             onChange={(state, ~exports=?) => {
@@ -63,6 +65,12 @@ module TextArea = (Underlying: COMPONENT) => {
               onClick={_ => {
                 setText(_ => serialise(props.content))
                 setEditing(_ => true)
+              }}
+            />
+            <span
+              className="editor-button button-icon button-icon-blue typcn typcn-arrow-loop"
+              onClick={_ => {
+                props.reset()
               }}
             />
           </div>

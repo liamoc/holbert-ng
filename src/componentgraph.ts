@@ -78,12 +78,14 @@ class Handler {
 	constructor(
 		url: string,
 		textual: string,
+		original_str: string,
 		deps: Array<string>,
 		maker: new (
 			data: string,
 			deps: Record<string, Component>,
 			signal: (msg: any) => void,
 			initialised: (msg: any) => void,
+			reset: (msg: any) => void,
 			view?: HTMLElement) => Component,
 		view?: HTMLElement) {
 		this.url = url;
@@ -109,6 +111,21 @@ class Handler {
 				window.localStorage.setItem(this.url, this.component.toString())
 			}
 		}
+		
+		
+		let setupComponent =  (text : string, deps: Record<string,Component>) => {
+			this.component = new maker(text, deps,
+			(msg) => { this.notifySubscribers(msg) }, (msg) => {
+				this.status = "ready";
+				for (let sub of this.subscribers) {
+					sub.dependencyReady(this.url);
+				}
+			}, (msg) => {
+				setupComponent(original_str, deps);
+				this.notifySubscribers(msg);
+			}, view);
+		}
+		
 		this.initialise = function() {
 			for (let dep in this.deps) {
 				load(dep).then((h) => {
@@ -117,13 +134,7 @@ class Handler {
 				})
 			}
 			if (awaiting.length == 0) {
-				this.component = new maker(textual, {},
-					(msg) => { this.notifySubscribers(msg) }, (msg) => {
-						this.status = "ready";
-						for (let sub of this.subscribers) {
-							sub.dependencyReady(this.url);
-						}
-					}, view);
+				setupComponent(textual, {})
 			}
 		}
 		this.dependencyReady = function(url) {
@@ -140,13 +151,7 @@ class Handler {
 						deps2[dep] = v;
 					}
 				}				
-				this.component = new maker(textual, deps2,
-					(msg) => { this.notifySubscribers(msg) }, (msg) => {
-						this.status = "ready";
-						for (let sub of this.subscribers) {
-							sub.dependencyReady(this.url);
-						}
-					}, view);
+				setupComponent(textual, deps2);
 			}
 		}
 	}
@@ -161,6 +166,7 @@ export function setup(
 			deps: Record<string, Component>,
 			signal: (msg: any) => void,
 			initialised: (msg: any) => void,
+			reset: (msg: any) => void,
 			view?: HTMLElement) => Component>) {
 	let promises = [];
 	for (const name in spec) {
@@ -176,12 +182,13 @@ export function setup(
 					.split(/\s+/)
 					.filter(Boolean);
 				console.log(deps);			
+				let original_str = this.innerHTML;
 				let text = window.localStorage.getItem(id) ?? this.innerHTML;
 				this.innerHTML = "loading";
 				if (this.id in database) {
 					this.innerHTML = "duplicate element"
 				} else {
-					database[this.id] = new Handler(this.id, text, deps, maker, this);
+					database[this.id] = new Handler(this.id, text, original_str, deps, maker, this);
 				}
 			}
 		});
