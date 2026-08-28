@@ -1,0 +1,5 @@
+\title{Testing Holbert-NG in Forester}
+\author/literal{Liam O'Connor}
+\transclude{nats}
+\transclude{theorem}
+\transclude{config}

@@ -1,0 +1,14 @@
+\import{holbert-macros}
+\title{Natural Numbers}
+\taxon{Definition} 
+\hol/induct{nat}{
+  \hol/dep{config}{config}
+}{
+  ---- Z
+  (Nat 0)
+  
+n.
+  (Nat n)
+  ------- S
+  (Nat (S n))
+}

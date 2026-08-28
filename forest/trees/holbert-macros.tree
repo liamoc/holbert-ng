@@ -1,0 +1,29 @@
+\xmlns:html{http://www.w3.org/1999/xhtml}
+
+\namespace\hol{
+\def\baseurl{http://localhost:1314/}
+\def\ural-helper[c]{\c}
+\def\dep[tree][id]{\baseurl\ural-helper{\tree}/index.xml/\id}
+\def\local[id]{\ural-helper{\current-tree}index.xml/\id}
+
+\def\proof[id][deps][body]{
+  \<html:hol-proof>[id]{\local{\id}}[deps]{\deps}{
+    \body
+  }
+}
+
+\def\axioms[id][deps][body]{
+  \<html:hol-comp>[id]{\local{\id}}[deps]{\deps}{
+    \body
+  }
+}
+
+\def\induct[id][deps][body]{
+  \<html:hol-inductive>[id]{\local{\id}}[deps]{\deps}{
+    \body
+  }
+}
+\def\config[id][body]{
+  \<html:hol-config>[id]{\local{\id}}{\body}
+}
+}

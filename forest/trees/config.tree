@@ -1,0 +1,3 @@
+\import{holbert-macros}
+\title{Configuration}
+\hol/config{config}{Gentzen} 

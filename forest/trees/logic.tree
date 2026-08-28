@@ -1,0 +1,97 @@
+\title{Logical Connectives}
+\taxon{Definition}
+\import{holbert-macros}
+\hol/axioms{proplogic}{
+  \hol/dep{config}{config}
+}{
+  A.B.
+  A    B
+  ------ AndI
+  (And A B)
+  
+  A.B.  
+  (And A B)
+  --------- AndE1
+  A
+  
+  A.B.  
+  (And A B)
+  --------- AndE2
+  B   
+  
+  A.B.
+  A
+  ---------- OrI1
+  (Or A B)
+  
+  A.B.
+  B
+  ---------- OrI2
+  (Or A B)
+  
+  A.B.C.
+  (Or A B)
+  [A |- C]
+  [B |- C]
+  ---------- OrE
+  C
+  
+  
+  -------- TrueI
+  True
+  
+  X.
+  False
+  --------- FalseE
+  X
+  
+  A.
+  [X. A |- X]
+  ----------- NotI
+  (Not A)
+  
+  A.X.
+  (Not A) A
+  --------- NotE
+  X
+  
+  A.B.
+  [A |- B]
+  -------- ImpI
+  (Implies A B)
+  
+  A.B.
+  (Implies A B) A
+  --------------- ImpE
+  B
+  
+  P.
+  [a. (P a)]
+  -------- AllI
+  (All (x. (P x)))
+  
+  
+  P.x.
+  (All (a. (P a)))
+  ---------------- AllE
+  (P x)
+  
+  P.x.
+  (P x)
+  --------------- ExI
+  (Exists (a. (P a)))
+  
+  P.C.
+  (Exists (a. (P a))) [x. (P x) |- C]
+  ---------------- ExE
+  C
+}
+
+\hol/proof{test}{\hol/local{proplogic} \hol/dep{config}{config}}{
+  P.
+  
+  ------------------- Test
+  (Implies (Exists (x. (Not (P x)))) (Not (All (x. P x))))
+
+ P. |- ?
+}

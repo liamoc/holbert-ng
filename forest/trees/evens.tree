@@ -1,0 +1,14 @@
+\import{holbert-macros}
+\title{Even Numbers}
+\taxon{Definition} 
+\hol/induct{evens}{
+  \hol/dep{config}{config}
+}{
+  ---- E-Z
+  (Even 0)
+  
+n.
+  (Even n)
+  ------- E-SS
+  (Even (S (S n)))
+}

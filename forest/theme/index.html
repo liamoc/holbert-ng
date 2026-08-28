@@ -1,0 +1,762 @@
+<html>
+  <head>
+  <link rel="stylesheet" type="text/css" href="typicons.min.css">
+  <style>
+  @font-face {
+  font-family: 'Neo Euler Medium';
+  font-style: normal;
+  font-weight: normal;
+  src: local('Neo Euler Medium'), url('euler.woff') format('woff');
+  }
+  .inline-rule {
+    font-family:'Neo Euler Medium';
+  }
+  :root {
+    --link-col: #0000cc;
+    --link-hover-col: #aa00cc;
+    --link-active-col: #0000cc;
+    --jump-hl-col: #ffee88;
+    --gutter-hl-col: #ffee88;
+    --editor-border-col: #0000aa;
+    --editor-bg-col: #eeeeff;
+    --faint-line-col: #eeeeee;
+    --tab-border-col: #cccccc;
+    --tab-fg-col: #666666;
+    --tab-active-fg-col: #333333;
+    --bg-col: white;
+    --fg-col: black;
+    --icon-teal-col: #0091aa;
+    --icon-blue-col: #0000cc;
+    --icon-red-col: #c30303;
+    --icon-grey-col: #666666;
+    --icon-active-col: #aa00cc;
+    --icon-hover-col: #aa00cc;
+    --editable-hover-col: #ccccff;
+    --apply-option-hover-border-col: #cc00ff;
+    --apply-option-hover-bg-col: #faeffa;
+    --inactive-option-hover-border-col: #0091aa;
+    --inactive-option-hover-bg-col: #d7f4f9;
+    --apply-option-border-col: #0000cc;
+    --apply-option-bg-col: #efeffa;
+    --rule-binder-col: #006600;
+    --rule-name-local-col: #0000aa;
+    --metavar-col: #00aa00;
+    --metavar-unnamed-col: #ff0000;
+    --schematic-col: gray;
+    --constructor-col: slategray;
+    --bound-col: #9343a7;
+    --placeholder-fg-col: #aaa;
+    --symbol-col: #990000;
+    --symbol-nat-col: #ffaa00;
+    --item-inserting-col: #aa00cc;
+    --sidebar-header-col: #c9c9d8;
+    --error-bg-col: #ffaaaa;
+    --logo-col: #c9dec9;
+    --axioms-notwellformed-col: #ffeecc;
+    --index-unsolved-col: #ffaa00;
+    --index-solved-col: #00aa66;
+    --index-bullet-col: #666666;
+    --logo-shadow-col: #666;
+    --sidebar-insert-bg-col: #eeeeff;
+    --sidebar-insert-hover-bg-col: #ffeeff;
+    --sidebar-text-col: #000;
+    --rule-name-elim-col: #0091aa;
+    --rule-name-rewrite-col: #5500aa;
+    --scrollbar-col: #eee;
+    --scrollbar-hover-col: #dfdfdf;
+  }
+  .inline-rule {
+    white-space:nowrap;
+  }
+  .proof-goal:focused {
+    border: 1px dashed black;
+  }
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+  }
+  .axiom {
+    display:inline-block;
+    margin-right:10px;
+    margin-bottom:5px;
+    margin-top:5px;
+    vertical-align: bottom;
+    white-space:nowrap;
+  }
+  .axiom-set {
+    white-space:normal;
+  }
+  .axiom-set-Linear > .inline-rule {
+    display:block;
+    margin-top:5px;
+    margin-bottom:5px;
+  }
+  .inline-rule > .rule-rulename-defined:not(:empty) {
+    margin-right:5px;
+  }
+  .inline-rule > .rule-rulename-defined:not(:empty):after {
+    content: ': ';
+  }
+  /* BUTTONS */
+  .button-icon {
+      padding: 0;
+      background: transparent; /* var(--bg-col); */
+      border: 0px;
+      font-size: 16px;
+      cursor: pointer;
+  }
+  .button-icon-teal {
+      color: var(--icon-teal-col);
+  }
+  .button-icon-blue {
+      color: var(--icon-blue-col);
+  }
+  .button-icon-red {
+      color: var(--icon-red-col);
+  }
+  .button-icon-grey {
+      color: var(--icon-grey-col);
+  }
+  .button-icon-active {
+      color: var(--icon-active-col);
+  }
+  .button-icon:hover {
+      color: var(--icon-hover-col);
+  }
+  .button-icon-insert {
+      right: 0;
+      position: absolute;
+      bottom: -0.54em;
+      z-index: 10000;
+  }
+  .button-icon-addbinder {
+      font-size: small;
+  }
+  .button-icon-addpremise {
+      margin-bottom: 2px;
+  }
+  .button-icon-goal {
+      display: inline-block;
+      margin-bottom: 2px;
+      font-size: 20px;
+  }
+  .editable {
+      color: var(--fg-col);
+      background: var(--bg-col);
+      border: none;
+      cursor: text;
+      border-radius: 4px;
+      padding: 0px;
+  }
+  .editable:hover {
+      background: var(--editable-hover-col);
+  }
+  .rule-cell {
+      font-family: "Neo Euler Medium";
+      vertical-align: bottom;
+      text-align: center;
+  }
+  .rule-conclusion {
+      border-top: 1px solid var(--fg-col);
+      padding: 2px;
+  }
+  .rule-hypothetical-conclusion {
+      padding: 2px;
+  }
+  .rule-premise {
+      padding-left: 6px;
+      padding-right: 6px;
+  }
+  .rule-binderbox {
+      padding-bottom: 3px;
+      padding-left: 2px;
+      padding-right: 2px;
+  }
+  .rule-rulebox {
+      padding-bottom: 1.1em;
+      padding-left: 2px;
+      padding-right: 2px;
+  }
+  .rule-spacer {
+      height: 1em;
+  }
+  .rule-binders {
+      padding-right: 4px;
+  }
+  .rule-binder {
+      color: var(--rule-binder-col);
+      font-size: small;
+      padding-right: 1px;
+  }
+  .rule-rulename-defined {
+      font-family: "Neo Euler Medium";
+      font-size: small;
+  }
+  .rule-rulename-cases {
+      font-family: "Neo Euler Medium";
+      font-size: small;
+  }
+  
+  .rule-rulename-cases-keyword {
+      font-family: "Computer Modern Sans";
+      font-size: small;
+  }
+  .rule-rulename-local {
+      font-family: "Computer Modern Typewriter";
+      color: var(--rule-name-local-col);
+  }
+  .rule-rulename-rewrite {
+      color: var(--rule-name-rewrite-col);
+  }
+  .rule-rulename-elim {
+      color: var(--rule-name-elim-col);
+  }
+  /* TERMS */
+  .term-metavar {
+      color: var(--metavar-col);
+  }
+  .term-metavar-unnamed {
+      color: var(--metavar-unnamed-col);
+  }
+  .term-schematic {
+      color: var(--schematic-col);
+      font-style: italic;
+      padding-right: 4px;
+  }
+  .term-schematic-telescope {
+    font-size:xx-small;
+    vertical-align: sub;
+  }
+  .term-bound {
+      color: var(--bound-col);
+  }
+  .term-app {
+      font-family: "Computer Modern Sans";
+      color: var(--constructor-col);
+  }
+  .term-constructor {
+      font-family: "Computer Modern Sans";
+      color: var(--constructor-col);
+  }
+  .placeholder {
+      color: var(--placeholder-fg-col);
+  }
+  /* SYMBOLS */
+  .symbol {
+      color: var(--symbol-col);
+  }
+  .symbol-nat {
+    color: var(--symbol-nat-col)
+  }
+  .symbol-prelude {
+    color: var(--symbol-prelude-col)
+  }
+  .symbol-turnstile {
+      padding-left: 6px;
+      padding-right: 6px;
+  }
+  .symbol-comma {
+      padding-left: 2px;
+      padding-right: 4px;
+  }
+  .symbol-mini {
+      font-size: x-small;
+      font-style: normal;
+  }
+  .editor-textArea {
+    width:100%;
+    height:10em;
+    font-family:monospace;
+  }
+  </style>
+    <script type="module" crossorigin src="/assets/index-bsTLl1gN.js"></script>
+  </head>
+  <body>
+    <hol-inductive id="index.html/nat" deps="index.html/myconfig">
+      ---- Z
+      (Nat 0)
+      
+    n.
+      (Nat n)
+      ------- S
+      (Nat (S n))
+
+      ---- even-0
+      (Even 0)
+    n.
+      (Even n)
+      -------- odd
+      (Odd (S n))
+    n.
+      (Odd n)
+      ------- even
+      (Even (S n))
+
+      ---- Unit
+      (Data U)
+    a. b.
+      (Data a) (Data b)
+      ---- Pair
+      (Data (A a b))
+    </hol-inductive>
+    <hol-inductive id="index.html/natt" deps="index.html/myconfig">
+    x.
+      -------- Znatt
+      (natt x 0)
+    n.x.
+      (natt x n)
+      -------- sucnatt
+      (natt x (S n))
+    </hol-inductive>
+    <hol-inductive id="index.html/mexp-hol" deps="index.html/myconfig">
+      ---- M-Empty
+      (M "")
+    s.
+      (M "$s")
+      -------- M-Surround
+      (M "( $s )")
+    s1.s2.
+      (M "$s1")
+      (M "$s2")
+      --------- M-Juxtapose
+      (M "$s1 $s2")
+    s.
+      (L "$s")
+      -------- N-Surr
+      (N "( $s )")
+
+      ---- L-Empty
+      (L "")
+    s1.s2.
+      (N "$s1")
+      (L "$s2")
+      --------- L-Juxtapose
+      (L "$s1 $s2")
+    </hol-inductive>
+    <hol-proof id="index.html/lexp-n-hol" deps="index.html/myconfig index.html/mexp-hol">
+      s.  (N "$s")
+      --------N-L
+      (L "$s")
+      s. sn |- ?
+    </hol-proof>
+    <hol-comp id="index.html/baz" deps="index.html/myconfig">
+    x.y.
+      (/\ x y)
+      -------- AE1
+      x
+      
+    x.y.
+      (/\ x y)
+      -------- AE2
+      y
+      
+    x.y.
+      x
+      y
+      ---- AI
+      (/\ x y)
+    
+      ---- Z
+      (Nat 0)
+      
+    n.
+      (Nat n)
+      ------- S
+      (Nat (S n))
+      
+    P.n.
+      (Nat n)
+      (P 0)
+      [k. (P k) |- (P (S k))]
+      ----------------------- ind
+      (P n)
+    
+      ---- e-z
+      (Even 0)
+      
+    n.
+      (Even n)
+      -------- e-SS
+      (Even (S (S n)))
+      
+    P.n.
+      (Even n)
+      (P 0)
+      [k. (P k) |- (P (S (S k)))]
+      --------------------------- E-ind
+      (P n)
+
+    a.
+      ---- refl
+      (= a a)
+    
+    a. b. f.
+      (= a b) (f a)
+      -------- eq-ap
+      (f b)
+
+    a.
+      -------- eqab
+      (= (A a) (B a))
+    </hol-comp>
+    <hol-config id="index.html/myconfig">Gentzen</hol-config>
+    <!-- <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat"> -->
+    <!-- n. -->
+    <!--   (Even (S (S n))) -->
+    <!--   ---------------  -->
+    <!--   (Even n) -->
+    <!---->
+    <!-- n. asm |- ? -->
+    <!-- </hol-proof> -->
+    <hol-proof id="index.html/prooftest2" deps="index.html/myconfig index.html/baz index.html/nat">
+      x.y.
+        (/\ x y)
+        -------- 
+        (/\ y x)
+
+      x.y. asm |- by (AI ((x. x. \1) y x) ((x. x. x) y x)) {
+          |- ?
+          |- ?}
+    
+    </hol-proof>
+  
+    <hol-proof id="index.html/prooftest-elim-bug" deps="index.html/myconfig index.html/baz index.html/nat">
+    a.
+      (Even a)
+      ------- 
+      (Nat a)
+
+    a. asm |- ?
+    
+    </hol-proof>
+
+    <hol-proof id="index.html/prooftest" deps="index.html/myconfig index.html/baz index.html/nat">
+    a.
+      (Nat a)
+      ------- 
+      (Nat (S (S a)))
+
+    a. asm |- ?
+    
+    </hol-proof>
+
+    <hol-proof id="index.html/prooftest3" deps="index.html/myconfig index.html/baz index.html/nat">
+    a. b. f.
+      (= a b)
+      ------- 
+      (= (f a) (f b))
+    
+    a. b. f. asm |- ?
+    </hol-proof>
+
+    <hol-proof id="index.html/eq-trans" deps="index.html/myconfig index.html/baz index.html/nat">
+    a. b. c.
+      (= a b)
+      (= b c)
+      ------- eq-trans
+      (= a c)
+    
+    a. b. c. ab bc |- ?
+    </hol-proof>
+    <hol-proof id="index.html/eq-high" deps="index.html/myconfig index.html/baz index.html/nat">
+      ------- A0B0
+      (= (A 0) (B 0))
+    
+      |- ?
+    </hol-proof>
+    <hol-proof id="index.html/constructor-neq-test" deps="index.html/myconfig index.html/baz index.html/nat">
+    x. y.
+      -------------------- neq-constructors
+      (not (= (@Z x) (@S y)))
+    
+    x. y. |- ?
+    </hol-proof>
+    <hol-proof id="index.html/constructor-inj-test" deps="index.html/myconfig index.html/baz index.html/nat">
+    x. y.
+      (= (@S x) (@S y))
+      -------------- S-inj
+      (= x y)
+    
+    x. y. eq |- ?
+    </hol-proof>
+    <hol-proof id="index.html/fcu-test" deps="index.html/myconfig">
+      x.
+        [P. (P (fst x))]
+        ---------------- 
+        (r (fst (fst x)))
+      
+      x. asm |- by (asm ((x. x. r (fst x)) x)) {}
+    </hol-proof>
+    <h1>String</h1>
+    <h2>Basic</h2>
+    <hol-string id="index.html/mexp" deps="index.html/myconfig">
+        ---- M-Empty
+        ("" M)
+
+        s.
+        ("$s" M)
+        ------- M-Surround
+        ("($s)" M)
+
+        s1. s2.
+        ("$s1" M)   ("$s2" M)
+        ------- M-Juxtapose
+        ("$s1 $s2" M)
+    </hol-string>
+    <hol-string-proof id="index.html/stringprooftest" deps="index.html/myconfig index.html/mexp">
+    ---- paren
+    ("( ) ( ( ) )" M)
+
+    |- by (M-Juxtapose "( )" "( ( ) )") {
+        |- by (M-Surround "") {
+            |- by (M-Empty) {}}
+        |- by (M-Surround "( )") {
+            |- by (M-Surround "") {
+                |- by (M-Empty) {}}}}
+    </hol-string-proof>
+    <!-- <hol-string id="index.html/bool" deps="index.html/myconfig"> -->
+    <!--   ------- T-Atom -->
+    <!--   "T" Atom -->
+    <!--   ------- F-Atom -->
+    <!--   "F" Atom -->
+    <!---->
+    <!--   e. -->
+    <!--   "$e" Atom -->
+    <!--   --------- Atom-AE -->
+    <!--   "$e" AE -->
+    <!---->
+    <!--   e1.e2. -->
+    <!--   "$e1" Atom  "$e2" AE -->
+    <!--   -------------------- And -->
+    <!--   "$e1 /\\ $e2" AE -->
+    <!---->
+    <!--   e. -->
+    <!--   "$e" AE -->
+    <!--   --------- AE-B -->
+    <!--   "$e" B -->
+    <!---->
+    <!--   e1.e2. -->
+    <!--   "$e1" AE "$e2" B -->
+    <!--   ----------------- Or -->
+    <!--   "$e1 \\/ $e2" B -->
+    <!---->
+    <!--   e. -->
+    <!--   "$e" B -->
+    <!--   ----------- Paren -->
+    <!--   "($e)" Atom -->
+    <!-- </hol-string> -->
+    <!-- <hol-string-proof id="index.html/boolprooftest" deps="index.html/myconfig index.html/bool"> -->
+    <!--   ------------- bool -->
+    <!--   "T/\\(T\\/F)" AE -->
+    <!--   |- by (And "T" "(T\\/F)") { -->
+    <!--     |- by (T-Atom) {} -->
+    <!--     |- by (Atom-AE "(T\\/F)") { -->
+    <!--       |- by (Paren "T\\/F") { -->
+    <!--         |- by (Or "T" "F") { -->
+    <!--           |- by (Atom-AE "T") { -->
+    <!--             |- by (T-Atom) {} -->
+    <!--           } -->
+    <!--           |- by (AE-B "F") { -->
+    <!--             |- by (Atom-AE "F") { -->
+    <!--               |- by (F-Atom) {} -->
+    <!--             } -->
+    <!--           } -->
+    <!--         } -->
+    <!--       } -->
+    <!--     } -->
+    <!--   } -->
+    <!-- </hol-string-proof> -->
+    <!-- <hol-string id="index.html/m-exp-parse" deps="index.html/myconfig"> -->
+    <!--   ---- MParse-Empty -->
+    <!--   "" (MP emp) -->
+    <!---->
+    <!--   s1. p1. -->
+    <!--   "$s1" (MP p1) -->
+    <!--   ------------- MParse-Surround -->
+    <!--   "($s1)" (MP (p1)) -->
+    <!---->
+    <!--   s1. s2. p1. p2. -->
+    <!--   "$s1" p1 -->
+    <!--   "$s1" p2 -->
+    <!--   ------------------- MParse-Juxtapose -->
+    <!--   "$s1 $s2" (MP (p1 p2)) -->
+    <!-- </hol-string> -->
+    <!-- <hol-string id="index.html/string-rhs" deps="index.html/myconfig"> -->
+    <!--   ---- Expr-e -->
+    <!--   "e" (Expr e) -->
+    <!---->
+    <!--   s1. -->
+    <!--   s2. e2. -->
+    <!--   "$s2" (Expr e2) -->
+    <!--   ------------- Stmt-Let -->
+    <!--   "let $s1 = $s2" (Let (ID "$s1") e2) -->
+    <!-- </hol-string> -->
+    <hol-string id="index.html/lexp" deps="index.html/myconfig">
+      s. ("$s" L)
+      -----N-Surr
+      ("($s)" N)
+
+      -----L-Empty
+      ("" L)
+
+      s1. s2.
+      ("$s1" N)   ("$s2" L)
+      -----L-Juxtapose
+      ("$s1 $s2" L)
+    </hol-string>
+    <hol-string-proof id="index.html/lexp-n" deps="index.html/lexp index.html/myconfig">
+      s. ("$s" N)
+      --------N-L
+      ("$s" L)
+      s. sn |- by (L-Juxtapose s "") {
+        |- by (sn) {}
+        |- by (L-Empty) {}
+      }
+    </hol-string-proof>
+    <hol-string-proof id="index.html/lexp-juxt" deps="index.html/myconfig index.html/mexp index.html/lexp">
+      s1.s2. ("$s1" L) ("$s2" L)
+      --------------------- lexp-juxt
+      ("$s1 $s2" L)
+      s1. s2. s1L s2L |- ?
+    </hol-string-proof>
+    <hol-string-proof id="index.html/mexp-lexp" deps="index.html/myconfig index.html/mexp index.html/lexp index.html/lexp-juxt index.html/lexp-n">
+      s. ("$s" M)
+      ----------- mexp-lexp
+      ("$s" L)
+      s. sM |- ?
+    </hol-string-proof>
+    <hol-string-proof id="index.html/lexp-mexp" deps="index.html/myconfig index.html/mexp index.html/lexp index.html/lexp-n">
+      s. ("$s" L)
+      ----------- mexp-lexp
+      ("$s" M)
+      s. sL |- elim (L_mutualInduct sL "" "$s" "" M M) {
+        |- by (M-Empty) {}
+        s1.s2. 0 1 2 3 |- elim (M-Juxtapose 2 "$s1" "$s2") {
+            |- by (3) {}}
+        s. 0 1 |- elim (M-Surround 1 "$s") {}}
+    </hol-string-proof>
+    <hol-string id="index.html/string-arithmetic" deps="index.html/myconfig">
+      s. n.
+      --------- string-prod
+      (Parse "$s * $n" (Prod s nat(n)))
+
+      s1.
+      ---------- eval-prod-Z
+      (Eval (Prod s1 nat(0)) "")
+
+      s1. s1n. n.
+      (Eval (Prod s1 nat(n)) s1n)
+      ----------- eval-prod-S
+      (Eval (Prod s1 nat(n + 1)) "$s1$s1n")
+
+      s. ast. res.
+      (Parse s ast)
+      (Eval ast res)
+      --------------- program-eval
+      (PEval s res)
+
+    </hol-string>
+    <hol-string-proof id="index.html/string-prod-toy" deps="index.html/myconfig index.html/string-arithmetic">
+      ------------- foo-3
+      (PEval "foo * 3" "foo foo foo")
+      |- ?
+
+    </hol-string-proof>
+    <hol-string id="index.html/types" deps="index.html/myconfig">
+      n. (Type n Nat)
+      ------------ Var
+      (Var n)
+
+      ------------ Sig-Empty
+      (Sig Empty)
+
+      f. n. sig. (Sig sig)
+      ------------ Sig-Cons
+      (Sig (Cons (f nat(n)) sig))
+
+      f. n. sig.
+      (Sig sig)
+      ------------ InSig-Head
+      (InSig (f nat(n)) (Cons (f nat(n)) sig))
+
+      f. n. g. sig.
+      (Sig sig)
+      (InSig (f nat(n)) sig)
+      ------------ InSig-Next
+      (InSig (f nat(n)) (Cons g (f nat(n))))
+
+      v. sig. (Sig sig) (Var v)
+      ------------ Term-Var
+      (Term sig (Var v))
+
+      a. sig. (Sig sig) (InSig (a nat(0)) sig)
+      ------------ Term-Const
+      (Term sig (Const a))
+
+      sig.
+      ------------ Term-List-0
+      (TermList sig nat(0) Empty)
+
+      f. n. t. ts. sig. (Term sig t) (TermList nat(n) ts)
+      ------------ Term-List-n
+      (TermList sig nat(n + 1) (Cons t ts))
+      
+      f. n. ts. sig. (Sig sig) (InSig (f nat(n)) sig) (TermList sig nat(n) ts)
+      ------------ Term-Func
+      (Term sig (Func f ts))
+    </hol-string>
+    <hol-string-proof id="index.html/play-sig" deps="index.html/myconfig index.html/types">
+      ------------- penips
+      (Term (Cons (f nat(2)) (Cons (a nat(0)) Empty)) (Func f (Cons (Const a) (Cons (Var nat(1)) Empty))))
+      |- ?
+    </hol-string-proof>
+    <hol-string id="index.html/palindrome-1" deps="index.html/myconfig">
+      a.
+      -------- Eq
+      (Eq a a)
+
+      s.
+      (Eq length("$s") nat(1))
+      ---------------------- Singleton
+      ("$s" Singleton)
+
+      ----------- Palindrome-Empty
+      ("" Palindrome)
+
+      c. ("$c" Singleton)
+      ------------ Palindrome-Single
+      ("$c" Palindrome)
+
+      c. s. ("$c" Singleton) ("$s" Palindrome)
+      ------------ Palindrome-Add
+      ("$c $s $c" Palindrome)
+    </hol-string>
+    <hol-string-proof id="index.html/foobar" deps="index.html/myconfig index.html/palindrome-1">
+      ------------------ dlads
+      ("a b c b a" Palindrome)
+      |- ?
+    </hol-string-proof>
+
+    <hol-string id="index.html/string-silliness" deps="index.html/myconfig">
+      a.
+      -------------- eq-refl
+      (Eq a a)
+
+      a. b. (Eq a b)
+      -------------- eq-sym
+      (Eq b a)
+
+      a. b. c. (Eq a b) (Eq "$b" c)
+      -------------- eq-trans-weird
+      (Eq a c)
+
+      -------------- eq-a-comp
+      (Eq "a" Foo)
+    </hol-string>
+    <hol-string-proof id="index.html/string-silliness-trip" deps="index.html/myconfig index.html/string-silliness">
+      ------------- eq-a-c
+      (Eq "a" "a")
+      |- ?
+    </hol-string-proof>
+  </body>
+</html>

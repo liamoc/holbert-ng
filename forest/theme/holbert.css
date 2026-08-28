@@ -1,0 +1,316 @@
+@font-face {
+font-family: 'Neo Euler Medium';
+font-style: normal;
+font-weight: normal;
+src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
+}
+.inline-rule {
+  font-family:'Neo Euler Medium';
+}
+:root {
+  --link-col: #0000cc;
+  --link-hover-col: #aa00cc;
+  --link-active-col: #0000cc;
+  --jump-hl-col: #ffee88;
+  --gutter-hl-col: #ffee88;
+  --editor-border-col: #0000aa;
+  --editor-bg-col: #eeeeff;
+  --faint-line-col: #eeeeee;
+  --tab-border-col: #cccccc;
+  --tab-fg-col: #666666;
+  --tab-active-fg-col: #333333;
+  --bg-col: white;
+  --fg-col: black;
+  --icon-teal-col: #0091aa;
+  --icon-blue-col: #0000cc;
+  --icon-red-col: #c30303;
+  --icon-grey-col: #666666;
+  --icon-active-col: #aa00cc;
+  --icon-hover-col: #aa00cc;
+  --editable-hover-col: #ccccff;
+  --apply-option-hover-border-col: #cc00ff;
+  --apply-option-hover-bg-col: #faeffa;
+  --inactive-option-hover-border-col: #0091aa;
+  --inactive-option-hover-bg-col: #d7f4f9;
+  --apply-option-border-col: #0000cc;
+  --apply-option-bg-col: #efeffa;
+  --rule-binder-col: #006600;
+  --rule-name-local-col: #0000aa;
+  --metavar-col: #00aa00;
+  --metavar-unnamed-col: #ff0000;
+  --schematic-col: gray;
+  --constructor-col: slategray;
+  --bound-col: #9343a7;
+  --placeholder-fg-col: #aaa;
+  --symbol-col: #990000;
+  --symbol-nat-col: #ffaa00;
+  --item-inserting-col: #aa00cc;
+  --sidebar-header-col: #c9c9d8;
+  --error-bg-col: #ffaaaa;
+  --logo-col: #c9dec9;
+  --axioms-notwellformed-col: #ffeecc;
+  --index-unsolved-col: #ffaa00;
+  --index-solved-col: #00aa66;
+  --index-bullet-col: #666666;
+  --logo-shadow-col: #666;
+  --sidebar-insert-bg-col: #eeeeff;
+  --sidebar-insert-hover-bg-col: #ffeeff;
+  --sidebar-text-col: #000;
+  --rule-name-elim-col: #0091aa;
+  --rule-name-rewrite-col: #5500aa;
+  --scrollbar-col: #eee;
+  --scrollbar-hover-col: #dfdfdf;
+}
+.inline-rule {
+  white-space:nowrap;
+}
+.proof-goal:focused {
+  border: 1px dashed black;
+}
+.sidebar {
+  position: fixed;
+  bottom: 0;
+}
+.axiom {
+  display:inline-block;
+  margin-right:10px;
+  margin-bottom:5px;
+  margin-top:5px;
+  vertical-align: bottom;
+  white-space:nowrap;
+}
+.axiom-set {
+  white-space:normal;
+  line-height:1.00;
+}
+.axiom-set-Linear > .inline-rule {
+  display:block;
+  margin-top:5px;
+  margin-bottom:5px;
+}
+.inline-rule > .rule-rulename-defined:not(:empty) {
+  margin-right:5px;
+}
+.inline-rule > .rule-rulename-defined:not(:empty):after {
+  content: ': ';
+}
+/* BUTTONS */
+.button-icon {
+    padding: 0;
+    background: transparent; /* var(--bg-col); */
+    border: 0px;
+    font-size: 16px;
+    cursor: pointer;
+}
+.button-icon-teal {
+    color: var(--icon-teal-col);
+}
+.button-icon-blue {
+    color: var(--icon-blue-col);
+}
+.button-icon-red {
+    color: var(--icon-red-col);
+}
+.button-icon-grey {
+    color: var(--icon-grey-col);
+}
+.button-icon-active {
+    color: var(--icon-active-col);
+}
+.button-icon:hover {
+    color: var(--icon-hover-col);
+}
+.button-icon-insert {
+    right: 0;
+    position: absolute;
+    bottom: -0.54em;
+    z-index: 10000;
+}
+.button-icon-addbinder {
+    font-size: small;
+}
+.button-icon-addpremise {
+    margin-bottom: 2px;
+}
+.button-icon-goal {
+    display: inline-block;
+    margin-bottom: 2px;
+    font-size: 20px;
+}
+.editable {
+    color: var(--fg-col);
+    background: var(--bg-col);
+    border: none;
+    cursor: text;
+    border-radius: 4px;
+    padding: 0px;
+}
+.editable:hover {
+    background: var(--editable-hover-col);
+}
+.rule-cell {
+    font-family: "Neo Euler Medium";
+    vertical-align: bottom;
+    text-align: center;
+}
+.rule-conclusion {
+    border-top: 1px solid var(--fg-col);
+    padding-top: 2px;
+}
+.rule-hypothetical-conclusion {
+}
+.rule-premise {
+    padding-left: 6px;
+    padding-right: 6px;
+    padding-bottom: 2px;
+}
+.rule-binderbox {
+    padding-left: 2px;
+    padding-right: 2px;
+}
+.rule-rulebox {
+    padding-bottom: 0.8em;
+    padding-left: 2px;
+    padding-right: 2px;
+}
+.rule-spacer {
+    height: 1em;
+}
+.rule-binders {
+    padding-right: 4px;
+}
+.rule-binder {
+    color: var(--rule-binder-col);
+    font-size: small;
+    padding-right: 1px;
+}
+.rule-rulename-defined {
+    font-family: "Neo Euler Medium";
+    font-size: small;
+}
+.rule-rulename-cases {
+    font-family: "Neo Euler Medium";
+    font-size: small;
+}
+
+.rule-rulename-cases-keyword {
+    font-family: "Computer Modern Sans";
+    font-size: small;
+}
+.rule-rulename-local {
+    font-family: "Computer Modern Typewriter";
+    color: var(--rule-name-local-col);
+}
+.rule-rulename-rewrite {
+    color: var(--rule-name-rewrite-col);
+}
+.rule-rulename-elim {
+    color: var(--rule-name-elim-col);
+}
+/* TERMS */
+.term-metavar {
+    color: var(--metavar-col);
+}
+.term-metavar-unnamed {
+    color: var(--metavar-unnamed-col);
+}
+.term-schematic {
+    color: var(--schematic-col);
+    font-style: italic;
+    padding-right: 4px;
+}
+.term-schematic-telescope {
+  font-size:xx-small;
+  vertical-align: sub;
+}
+.term-binder {
+    color: var(--bound-col);
+    font-size: small;
+    padding-right: 4px;
+}
+.term-boundvar {
+    color: var(--bound-col);
+}
+.term-const {
+    font-family: "Computer Modern Sans";
+}
+.term-constructor {
+    font-family: "Computer Modern Sans";
+    color: var(--constructor-col);
+}
+.placeholder {
+    color: var(--placeholder-fg-col);
+}
+/* SYMBOLS */
+.symbol {
+    color: var(--symbol-col);
+}
+.symbol-nat {
+  color: var(--symbol-nat-col)
+}
+.symbol-prelude {
+  color: var(--symbol-prelude-col)
+}
+.symbol-turnstile {
+    padding-left: 6px;
+    padding-right: 6px;
+}
+.symbol-comma {
+    padding-left: 2px;
+    padding-right: 4px;
+}
+.symbol-mini {
+    font-size: x-small;
+    font-style: normal;
+}
+.editor-textArea {
+  width:100%;
+  height:10em;
+  font-family:monospace;
+}
+.inference {
+margin-bottom:0px;
+border-spacing:0px;
+line-height:1.00;
+}
+.axiom-set-Linear > .inline-rule {
+display:block;
+}
+.proof-assumptions {
+  margin:0px;
+  padding-bottom:0px;
+  list-style-type:none;
+  padding-inline-start:32px;
+}
+.proof-judgement {
+  font-family: "Neo Euler Medium";
+}
+.proof-ruleName {
+  font-family: "Neo Euler Medium";
+}
+.proof-assumptions-Hybrid > li {
+  display: inline-block;
+}
+.proof-assumptions-Gentzen > li {
+  display: inline-block;
+}
+.axiom-set-Linear > section > details > .inline-rule {
+display:block;
+}
+.proof-text {
+  font-style:italic;
+}
+.subgoals {
+  list-style-type: none;
+}
+.subgoals > li {
+  margin-bottom:5px;
+}
+
+.proof-step {
+    padding-left: 5px;
+    padding-right: 5px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+    border: 1px solid rgba(1, 1, 1, 0.2);
+}

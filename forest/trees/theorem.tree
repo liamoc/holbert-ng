@@ -1,0 +1,16 @@
+\import{holbert-macros}
+\title{Proofs!}
+\taxon{Theorem}
+\p{All [even](evens) numbers are natural numbers.}
+\hol/proof{evensarenats}{
+  \hol/dep{config}{config}
+  \hol/dep{nats}{nat} 
+  \hol/dep{evens}{evens} 
+}{  
+  x.
+    (Even x)
+    ---------------- f
+    (Nat x)
+  
+  x. asm |- ?
+}  
