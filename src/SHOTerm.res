@@ -1,31 +1,3 @@
-/**
- * Simple pattern-unification term module.
- *
- * Representation notes:
- * - `meta` and bound-variable de Bruijn indices are literally the same
- *   thing: `int`. `scope: array<meta>` given to `place` is a spine of
- *   distinct bound-variable indices.
- * - `schematic` is just an `int` id for a metavariable.
- * - `subst` maps schematic id -> a *closed* solution term. If schematic
- *   `n` was created via `place(n, ~scope)` = `n x_s0 ... x_s(k-1)`, its
- *   solution is stored as `Lam(...Lam(body))` with k lambdas, i.e. the
- *   thing you'd apply to x_s0..x_s(k-1) to get the value back. This
- *   means `substitute` just swaps in the closed term, and application
- *   spines redex away via `reduce`.
- * - Only genuine *pattern* unification is attempted: a metavariable is
- *   only ever solved when it's applied to a spine of *distinct* bound
- *   variables. Anything else (a metavariable applied to a non-variable,
- *   or to a repeated variable) is treated as rigid and unification
- *   fails rather than attempting Huet-style pruning/backtracking.
- *   Because of that, `unify` never needs genuine choice points, so the
- *   returned `Seq.t` always has 0 or 1 elements.
- * - `gen` is only needed for the flex-flex "same schematic, different
- *   spines" case (`M x y =?= M y x`), where a smaller fresh
- *   metavariable has to be invented for the positions that agree.
- *   Without a `~gen`, that specific case just fails.
- */
-
-
 type rec t =
   | Symbol({name: string, constructor: bool})
   | Var({idx: int})
@@ -37,16 +9,12 @@ type schematic = int
 type meta = string
 type subst = Belt.Map.Int.t<t>
 
-// Fresh-name counter. `seen` bumps it above any externally-encountered
-// schematic id so freshly generated ones never collide with them.
+
 type gen = {mutable next: int}
 
 let makeGen = () => {next: 0}
 
 let fresh = (g, ~replacing as _=?) => {
-  // `replacing` is accepted for callers that want to record *why* a
-  // schematic was generated (e.g. during pruning), but the generator
-  // itself doesn't need it: freshness is just "next global int".
   let s = g.next
   g.next = g.next + 1
   s
@@ -79,7 +47,7 @@ let rec upshift = (term, n, ~from=0) =>
 // Var(from+len-1) with values[0..len-1] (each correctly shifted for
 // the depth at which it's inserted), and downshifts any free
 // variable above that range by len. With from=0 and a single value
-// this is ordinary single-variable substitution/beta-reduction.
+// this is ordinary single-variable substitution.
 let substDeBruijn = (term, values, ~from=0) => {
   let len = Belt.Array.length(values)
   let rec go = (term, depth) =>
@@ -133,9 +101,6 @@ let rec structEqual = (a, b) =>
   | _ => false
   }
 
-// alpha-equivalence is free (de Bruijn); this is beta-normal-form
-// structural equality. Lam's `name` field is just a display hint and
-// is ignored, as it should be.
 let equivalent = (a, b) => structEqual(reduce(a), reduce(b))
 
 // ---------- substitutions ----------
