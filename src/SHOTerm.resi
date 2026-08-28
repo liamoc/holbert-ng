@@ -13,3 +13,4 @@ include Signatures.TERM
 
 let mapTerms: (t, t => t) => t
 let strip: t => (t, array<t>)
+let unstrip: (t, array<t>) => t

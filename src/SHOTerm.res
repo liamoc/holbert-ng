@@ -159,8 +159,14 @@ let rec spineList = t =>
   | _ => (t, list{})
   }
 
-// Is `t` of the form `Schematic(n)[x_i0, ..., x_i(k-1)]` with the
-// x_ij *distinct* bound variables? If so, (n, [i0..i(k-1)]).
+
+// Is `t` of the form `Schematic(n)[x_i0, ..., x_i(k-1)]` with each
+// x_ij a bound variable? Unlike strict Miller-pattern unification,
+// the x_ij are *not* required to be distinct — a spine like `?0 n n`
+// (arising e.g. from instantiating an eliminator's `P n` premise
+// where the same bound variable fills two rule-positions) is
+// accepted as a "quasi-pattern". See `makeSolution` for how the
+// resulting ambiguity is resolved.
 let asPattern = t => {
   let (head, args) = spineList(t)
   switch head {
@@ -171,17 +177,47 @@ let asPattern = t => {
       | _ => None
       }
     )
-    if Belt.List.every(idxs, Belt.Option.isSome) {
-      let idxArr = idxs->Belt.List.map(Belt.Option.getExn)->Belt.List.toArray
-      let distinct = Belt.Set.Int.fromArray(idxArr)
-      Belt.Set.Int.size(distinct) == Belt.Array.length(idxArr)
-        ? Some((schematic, idxArr))
-        : None
-    } else {
-      None
-    }
+    Belt.List.every(idxs, Belt.Option.isSome)
+      ? Some((schematic, idxs->Belt.List.map(Belt.Option.getExn)->Belt.List.toArray))
+      : None
   | _ => None
   }
+}
+
+// last index j such that arr[j] == p, if any
+let lastIndexOf = (arr, p) => {
+  let rec go = i =>
+    i < 0
+      ? None
+      : Belt.Array.getExn(arr, i) == p
+      ? Some(i)
+      : go(i - 1)
+  go(Belt.Array.length(arr) - 1)
+}
+
+// Build the closed solution `λ x0' .. x(k-1)'. body` for
+// `Schematic(n)[spine] := rhs`, given rhs's free vars ⊆ spine.
+// spine[j] (an ambient bound-var index) becomes the (k-1-j)-th
+// innermost bound variable of the solution, matching how `place`
+// applies args left-to-right (outermost lambda binds the first arg).
+//
+// When a bound variable occurs more than once in `spine` (a
+// non-linear/quasi-pattern), occurrences of it in `rhs` are mapped
+// to the *rightmost* (last, i.e. innermost-lambda) spine position.
+// This is a deliberate choice among several sound solutions, not a 
+// canonical one.
+let makeSolution = (rhs, spineArr) => {
+  let k = Belt.Array.length(spineArr)
+  let maxIdx = Belt.Array.reduce(spineArr, -1, (m, i) => max(m, i))
+  let values = Belt.Array.makeBy(maxIdx + 1, p =>
+    switch lastIndexOf(spineArr, p) {
+    | Some(j) => Var({idx: k - 1 - j})
+    | None => Symbol({name: "_unused", constructor: false}) // never read, by the scope check
+    }
+  )
+  let body = substDeBruijn(rhs, values, ~from=0)
+  let rec wrapLams = (m, b) => m <= 0 ? b : wrapLams(m - 1, Lam({name: "x", body: b}))
+  wrapLams(k, body)
 }
 
 let rec occurs = (n, t) =>
@@ -211,24 +247,6 @@ let freeVars = t => {
   acc.contents
 }
 
-// Build the closed solution `λ x0' .. x(k-1)'. body` for
-// `Schematic(n)[spine] := rhs`, given rhs's free vars ⊆ spine.
-// spine[j] (an ambient bound-var index) becomes the (k-1-j)-th
-// innermost bound variable of the solution, matching how `place`
-// applies args left-to-right (outermost lambda binds the first arg).
-let makeSolution = (rhs, spineArr) => {
-  let k = Belt.Array.length(spineArr)
-  let maxIdx = Belt.Array.reduce(spineArr, -1, (m, i) => max(m, i))
-  let values = Belt.Array.makeBy(maxIdx + 1, p =>
-    switch Belt.Array.getIndexBy(spineArr, x => x == p) {
-    | Some(j) => Var({idx: k - 1 - j})
-    | None => Symbol({name: "_unused", constructor: false}) // never read, by the scope check
-    }
-  )
-  let body = substDeBruijn(rhs, values, ~from=0)
-  let rec wrapLams = (m, b) => m <= 0 ? b : wrapLams(m - 1, Lam({name: "x", body: b}))
-  wrapLams(k, body)
-}
 
 // Try to solve `a` (assumed reduced) as a pattern for `b` (also
 // reduced). Occurs check + scope check (b's free vars ⊆ a's spine).
@@ -334,11 +352,13 @@ let rec unifyStep = (t1, t2, gen) => {
   }
 }
 
-let unify = (t1, t2, ~gen=?) =>
+let unify = (t1, t2, ~gen=?) => {
+  Console.log(("U",t1,t2))
   switch unifyStep(t1, t2, gen) {
-  | Some(s) => Seq.cons(s, Seq.empty)
+  | Some(s) => {Console.log(s); Seq.cons(s, Seq.empty)}
   | None => Seq.empty
   }
+}
 
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
@@ -360,7 +380,15 @@ let rec stripLam = (it: t): (array<string>, t) =>
     (Array.concat([name], names), body)
   | _ => ([], it)
   }
-  
+let rec unstrip = (term: t, args: array<t>): t => {
+    if args->Array.length == 0 {
+      term
+    } else {
+      let head = args[0]->Option.getExn
+      let rest = args->Array.sliceToEnd(~start=1)
+      unstrip(App({func: term, arg: head}), rest)
+    }
+  }  
 let rec prettyPrint = (it: t, ~scope: array<string>) =>
   switch it {
   | Symbol({name, constructor}) =>
