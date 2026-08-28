@@ -213,7 +213,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     | None => Error("Cannot find rule '"->String.concat(it.ruleName)->String.concat("'"))
     | Some(rule) if Array.length(rule.vars) == Array.length(it.instantiation) => {
         let {premises, conclusion} = Rule.instantiate(rule, it.instantiation)
-        if Judgment.equivalent(conclusion, j) {
+        if Judgment.equivalent(Judgment.reduce(conclusion), Judgment.reduce(j)) {
           if Array.length(it.subgoals) == Array.length(premises) {
             Ok({
               ruleName: it.ruleName,
@@ -368,9 +368,9 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
           Error(`Premise to eliminate in rule ${it.ruleName} has non-empty premises`)
         } else if elim.premises->Array.length > 0 {
           Error(`Elimination motive (?) ${it.elimName} has non-empty premises`)
-        } else if !Judgment.equivalent(elimPremise.conclusion, elim.conclusion) {
+        } else if !Judgment.equivalent(Judgment.reduce(elimPremise.conclusion), Judgment.reduce(elim.conclusion)) {
           Error(`Premise to eliminate and elimination motive (?) ${it.elimName} do not match`)
-        } else if !Judgment.equivalent(conclusion, j) {
+        } else if !Judgment.equivalent(Judgment.reduce(conclusion), Judgment.reduce(j)) {
           let concString = Judgment.prettyPrint(conclusion, ~scope=ctx.fixes)
           let goalString = Judgment.prettyPrint(j, ~scope=ctx.fixes)
           Error(`Conclusion of rule '${concString}' doesn't match goal '${goalString}'`)

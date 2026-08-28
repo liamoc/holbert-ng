@@ -113,15 +113,20 @@ class Handler {
 		}
 		
 		
-		let setupComponent =  (text : string, deps: Record<string,Component>) => {
+		let setupComponent =  (text : string, deps: Record<string,Component>, notifyReady: boolean) => {
+      console.log("Setting up ", text, deps)
 			this.component = new maker(text, deps,
 			(msg) => { this.notifySubscribers(msg) }, (msg) => {
 				this.status = "ready";
-				for (let sub of this.subscribers) {
-					sub.dependencyReady(this.url);
-				}
+        if (notifyReady) {
+          queueMicrotask(() => {
+            for (let sub of this.subscribers) {
+					    sub.dependencyReady(this.url);
+            } 
+          })
+        }
 			}, (msg) => {
-				setupComponent(original_str, deps);
+				setupComponent(original_str, deps, false);
 				this.notifySubscribers(msg);
 			}, view);
 		}
@@ -134,7 +139,7 @@ class Handler {
 				})
 			}
 			if (awaiting.length == 0) {
-				setupComponent(textual, {})
+				setupComponent(textual, {}, true)
 			}
 		}
 		this.dependencyReady = function(url) {
@@ -151,7 +156,7 @@ class Handler {
 						deps2[dep] = v;
 					}
 				}				
-				setupComponent(textual, deps2);
+				setupComponent(textual, deps2, true);
 			}
 		}
 	}
@@ -181,7 +186,7 @@ export function setup(
 					.trim()
 					.split(/\s+/)
 					.filter(Boolean);
-				console.log(deps);			
+        deps = [...new Set(deps)];
 				let original_str = this.innerHTML;
 				let text = window.localStorage.getItem(id) ?? this.innerHTML;
 				this.innerHTML = "loading";

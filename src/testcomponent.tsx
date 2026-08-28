@@ -33,6 +33,7 @@ function HolComp(RComp : any) {
 			this.root.render(
 				<Tag content={this.state} imports={this.gatherImports()} 
 					reset={ () => {
+            console.log("Reset invoked on " + this.original_str)
 						reset(0)
 					}}
 					onChange={ (state, exports) => {
@@ -48,6 +49,7 @@ function HolComp(RComp : any) {
 		}
 		constructor(str: string, deps : Record<string,Component>, signal : (msg: any) => void, loaded : (msg: any) => void, reset : (msg : any) => void, view? : HTMLElement) {
 			this.deps = deps
+      this.original_str = str;
 			this.loaded = false
 			if (view != null) { 
 				const newDiv = document.createElement("div");	
