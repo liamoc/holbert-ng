@@ -5,7 +5,7 @@ module ConstructorDisjointness = {
   module Context = Method.Context(Term, Judgment)
   module Results = Method.MethodResults(Term)
 
-  type t<'a> = {factName: string}
+  type t<'a> = {factName: Method.RuleRef.t}
 
   let keywords = ["disjointness"]
 
@@ -33,15 +33,17 @@ module ConstructorDisjointness = {
     context: Context.t,
     _goal: Judgment.t,
     _checkSubgoal: ('a, Rule.t) => 'b,
-  ): result<t<'b>, string> =>
-    switch context->Context.facts->Dict.get(step.factName) {
-    | None => Error(`no such fact: ${step.factName}`)
+  ): result<t<'b>, string> => {
+    let keyName = Method.RuleRef.prettyPrint(step.factName, ~assms=context.localFactNames)
+    switch context->Context.lookup(step.factName) {
+    | None => Error(`no such fact: ${keyName}`)
     | Some({Rule.vars: [], premises: [], conclusion}) =>
       isDisjointEquation(conclusion) 
         ? Ok({factName: step.factName}) 
-        : Error(`fact ${step.factName} is not a constructor disjointness`)
-    | Some(_) => Error(`fact ${step.factName} is not a plain assumption`)
+        : Error(`fact ${keyName} is not a constructor disjointness`)
+    | Some(_) => Error(`fact ${keyName} is not a plain assumption`)
     }
+  }
 
   let apply = (
     context: Context.t,
@@ -51,26 +53,28 @@ module ConstructorDisjointness = {
   ): array<Results.t<t<'a>>> =>
     context
     ->Context.facts
-    ->Dict.toArray
     ->Array.filterMap(((factName, rule)) =>
       switch rule {
-      | {Rule.vars: [], premises: [], conclusion} if isDisjointEquation(conclusion) =>
-        Some(Results.Action(`disjointness ${factName}`, {factName: factName}, Term.makeSubst()))
+      | {Rule.vars: [], premises: [], conclusion} if isDisjointEquation(conclusion) => {
+          let keyName = Method.RuleRef.prettyPrint(factName, ~assms=context.localFactNames)
+          Some(Results.Action(`disjointness ${keyName}`, {factName: factName}, Term.makeSubst()))
+        }
       | _ => None
       }
     )
   let prettyPrint = (
       it: t<'a>,
       ~scope,
+      ~assms,
       ~indentation=0,
-      ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
-    ) =>
+      ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+    ) => 
       "disjointness "
-      ->String.concat(it.factName)
+      ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
       ->String.concat(Util.newline)
 
-  let parse = (input, ~keyword, ~scope, ~gen, ~subparser) =>
-    switch Rule.parseRuleName(String.trim(input)) {
+  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) =>
+    switch Method.RuleRef.parse(String.trim(input),~assms) {
     | Ok((ruleName, rest)) => Ok(({factName: ruleName},rest))
     | _ => Error("Expected fact name")
     }
@@ -84,7 +88,7 @@ module ConstructorInjectivity = {
   module Context = Method.Context(Term, Judgment)
   module Results = Method.MethodResults(Term)
 
-  type t<'a> = {factName: string, subgoal: 'a}
+  type t<'a> = {factName: Method.RuleRef.t, subgoal: 'a}
 
   let keywords = ["injectivity"]
 
@@ -111,12 +115,13 @@ module ConstructorInjectivity = {
     context: Context.t,
     goal: Judgment.t,
     checkSubgoal: ('a, Rule.t) => 'b,
-  ): result<t<'b>, string> =>
-    switch context->Context.facts->Dict.get(step.factName) {
-    | None => Error(`no such fact: ${step.factName}`)
+  ): result<t<'b>, string> => {
+    let keyName = Method.RuleRef.prettyPrint(step.factName, ~assms=context.localFactNames)
+    switch context->Context.lookup(step.factName) {
+    | None => Error(`no such fact: ${keyName}`)
     | Some({Rule.vars: [], premises: []} as rule) =>
       switch injectivityPairs(rule.conclusion) {
-      | None => Error(`fact ${step.factName} is not a constructor equality`)
+      | None => Error(`fact ${keyName} is not a constructor equality`)
       | Some(pairs) =>
         Ok({
           factName: step.factName,
@@ -126,8 +131,9 @@ module ConstructorInjectivity = {
           ),
         })
       }
-    | Some(_) => Error(`fact ${step.factName} is not a plain assumption`)
+    | Some(_) => Error(`fact ${keyName} is not a plain assumption`)
     }
+  }
 
   let apply = (
     context: Context.t,
@@ -137,7 +143,6 @@ module ConstructorInjectivity = {
   ): array<Results.t<t<'a>>> =>
     context
     ->Context.facts
-    ->Dict.toArray
     ->Array.filterMap(((factName, rule)) =>
       switch rule {
       | {Rule.vars: [], premises: []} =>
@@ -149,9 +154,10 @@ module ConstructorInjectivity = {
             premises: pairs->Array.map(mkPremiseRule),
             conclusion: goal,
           }
+          let keyName = Method.RuleRef.prettyPrint(factName, ~assms=context.localFactNames)
           Some(
             Results.Action(
-              `injectivity ${factName}`,
+              `injectivity ${keyName}`,
               {factName, subgoal: subgoalRule->mkSubgoal},
               Term.makeSubst(),
             ),
@@ -164,20 +170,21 @@ module ConstructorInjectivity = {
   let prettyPrint = (
         it: t<'a>,
         ~scope,
+        ~assms,
         ~indentation=0,
-        ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
+        ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
       ) =>
       "injectivity "
-      ->String.concat(it.factName)
+      ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
       ->String.concat(Util.newline)
-      ->String.concat(subprinter(it.subgoal, ~scope, ~indentation))
+      ->String.concat(subprinter(it.subgoal, ~scope, ~assms, ~indentation))
       ->String.concat(Util.newline)
   exception InternalParseError(string)
     
-  let parse = (input, ~keyword, ~scope, ~gen, ~subparser) => {
-    switch Rule.parseRuleName(String.trim(input)) {
+  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) => {
+    switch Method.RuleRef.parse(String.trim(input),~assms) {
     | Ok((ruleName, rest)) => {
-        switch subparser(String.trim(rest), ~scope, ~gen) {
+        switch subparser(String.trim(rest), ~scope, ~assms, ~gen) {
         | Ok((sg, rest)) =>
             Ok(({subgoal:sg, factName:ruleName}, rest))
         | Error(e) => Error(e)

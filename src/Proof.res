@@ -38,13 +38,14 @@ module Make = (
       m->Method.substitute(subst)->Method.map(m => m->substitute(subst))
     ),
   }
-  let rec prettyPrint = (prf: t, ~scope, ~indentation=0) => {
+  let rec prettyPrint = (prf: t, ~scope, ~assms, ~indentation=0) => {
     let mtd = switch prf.method {
     | None => "?"
     | Some(m) =>
       Method.prettyPrint(
         m,
         ~scope=prf.fixes->Array.concat(scope),
+        ~assms=assms->Array.concat(prf.assumptions),
         ~indentation=indentation + 2,
         ~subprinter=prettyPrint,
       )
@@ -66,7 +67,7 @@ module Make = (
     )
     ->String.concat(mtd)
   }
-  let rec parse = (input, ~scope, ~gen) => {
+  let rec parse = (input, ~scope, ~assms, ~gen) => {
     let it = ref(Error(""))
     let cur = ref(String.trim(input))
     let fixes = []
@@ -94,12 +95,13 @@ module Make = (
     } else {
       cur := cur.contents->String.trim->String.sliceToEnd(~start=2)->String.trim
       let scope' = Array.concat(fixes, scope)
+      let assms' = Array.concat(assms, assumptions)
       switch parseKeyword(cur.contents) {
       | Some("?") =>
         Ok(({fixes, assumptions, method: None}, cur.contents->String.sliceToEnd(~start=1)))
       | Some(keyword) => {
           cur := cur.contents->String.sliceToEnd(~start=String.length(keyword))
-          switch Method.parse(cur.contents, ~keyword, ~scope=scope', ~gen, ~subparser=parse) {
+          switch Method.parse(cur.contents, ~keyword, ~scope=scope', ~assms=assms', ~gen, ~subparser=parse) {
           | Ok((method, r)) => Ok(({fixes, assumptions, method: Some(method)}, r))
           | Error(e) => Error(e)
           }
@@ -114,12 +116,10 @@ module Make = (
       let (nAssumptions, nPremises) = (Array.length(prf.assumptions), Array.length(rule.premises))
 
       if nAssumptions == nPremises {
-        let newFacts = Dict.fromArray(Belt.Array.zip(prf.assumptions, rule.premises))
         Ok({
           Context.fixes: rule.vars->Array.concat(ctx.fixes),
-          localFacts: Dict.mapValues(ctx.localFacts, r => {
-            Rule.upshift(r, rule.vars->Array.length)
-          })->Dict.assign(newFacts),
+          localFacts: ctx.localFacts->Array.map(r => Rule.upshift(r, rule.vars->Array.length))->Array.concat(rule.premises),
+          localFactNames: ctx.localFactNames->Array.concat(prf.assumptions),
           globalFacts: ctx.globalFacts,
         })
       } else {
@@ -174,14 +174,13 @@ module Make = (
           method: Goal(
             gen => {
               Method.apply(ctx', rule.conclusion, gen, rl => {
-                Console.log(ctx'.localFacts->Dict.toArray->Array.length)
                 check(
                   ctx',
                   {
                     fixes: rl.vars,
                     method: None,
                     assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
-                      Int.toString(i + ctx'.localFacts->Dict.toArray->Array.length)
+                      Int.toString(i + ctx'.localFacts->Array.length)
                     ),
                   },
                   rl,

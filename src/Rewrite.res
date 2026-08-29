@@ -6,7 +6,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
   type direction = Forward | Backward
   type t<'a> = {
-    ruleName: string,
+    ruleName: Method.RuleRef.t,
     direction: direction,
     path: Judgment.path,
     values: array<Term.t>,
@@ -34,19 +34,20 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     | Forward => (lhs, rhs)
     | Backward => (rhs, lhs)
     }
-  let check = (step: t<'a>, context: Context.t, goal: Judgment.t, checkSubgoal): result<t<'b>, string> =>
-    switch context->Context.facts->Dict.get(step.ruleName) {
-    | None => Error(`no such rule: ${step.ruleName}`)
+  let check = (step: t<'a>, context: Context.t, goal: Judgment.t, checkSubgoal): result<t<'b>, string> => {
+    let keyName = Method.RuleRef.prettyPrint(step.ruleName, ~assms=context.localFactNames)
+    switch context->Context.lookup(step.ruleName) {
+    | None => Error(`no such rule: ${keyName}`)
     | Some(rule) =>
       if Array.length(step.values) != Array.length(rule.Rule.vars) {
-        Error(`wrong number of instantiations for rule ${step.ruleName}`)
+        Error(`wrong number of instantiations for rule ${keyName}`)
       } else {
         switch Judgment.locate(goal, step.path) {
         | None => Error("invalid rewrite path")
         | Some((subterm, localScope)) =>
           let {premises, conclusion} = rule->Rule.instantiate(step.values)
           switch Judgment.asEquation(conclusion) {
-          | None => Error(`rule ${step.ruleName} is not an equation`)
+          | None => Error(`rule ${keyName} is not an equation`)
           | Some((eqLhs, eqRhs)) =>
             let (lhs, rhs) = orient(step.direction, eqLhs, eqRhs)
             let lhs' = Term.upshift(lhs, localScope->Array.length)
@@ -74,6 +75,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
         }
       }
     }  
+  }
   let apply = (
     context: Context.t,
     goal: Judgment.t,
@@ -126,14 +128,14 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
     context
     ->Context.facts
-    ->Dict.toArray
     ->Array.flatMap(((ruleName, rule)) => {
+      let keyName = Method.RuleRef.prettyPrint(ruleName, ~assms=context.localFactNames)
       switch actionsFor(ruleName, rule) {
       | [] => []
-      | [(step, subst)] => [Results.Action(`rewrite ${ruleName} ${dirLabel(step.direction)}`, step, subst)]
+      | [(step, subst)] => [Results.Action(`rewrite ${keyName} ${dirLabel(step.direction)}`, step, subst)]
       | many => [
           Results.Group(
-            `rewrite ${ruleName}`,
+            `rewrite ${keyName}`,
             many->Array.map(((step, subst)) => 
               Results.Action(`${Judgment.prettyPrintPath(step.path)} ${dirLabel(step.direction)}`, step, subst)),
           ),
@@ -145,13 +147,14 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
   let prettyPrint = (
       it: t<'a>,
       ~scope,
+      ~assms,
       ~indentation=0,
-      ~subprinter: ('a, ~scope: array<Term.meta>, ~indentation: int=?) => string,
+      ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
     ) => {
       let args = it.values->Array.map(t => Term.prettyPrint(t, ~scope))
       (if it.direction == Backward { "rev_rewrite" } else { "rewrite" })
       ->String.concat(" (")
-      ->String.concat(Array.join([it.ruleName]->Array.concat(args), " "))
+      ->String.concat(Array.join([Method.RuleRef.prettyPrint(it.ruleName,~assms)]->Array.concat(args), " "))
       ->String.concat(") ")
       ->String.concat(Judgment.prettyPrintPath(it.path))
       ->String.concat(" {")
@@ -164,22 +167,22 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
       )
       ->String.concat(
         it.subgoals
-        ->Array.map(s => subprinter(s, ~scope, ~indentation=indentation + 2))
+        ->Array.map(s => subprinter(s, ~scope, ~assms, ~indentation=indentation + 2))
         ->Array.join(Util.newline),
       )
       ->String.concat("}")
       ->String.concat(Util.newline)
-      ->String.concat(subprinter(it.newGoal,~scope, ~indentation))
+      ->String.concat(subprinter(it.newGoal,~scope, ~assms, ~indentation))
       ->String.concat(Util.newline)
     }
 
   exception InternalParseError(string)
 
-  let parse = (input, ~keyword, ~scope, ~gen, ~subparser) => {
+  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) => {
     let direction = if keyword == "rev_rewrite" { Backward } else { Forward }  
     let cur = ref(String.trim(input))
     if cur.contents->String.get(0) == Some("(") {
-      switch Rule.parseRuleName(cur.contents->String.sliceToEnd(~start=1)) {
+      switch Method.RuleRef.parse(String.trim(cur.contents->String.sliceToEnd(~start=1)),~assms) {
       | Ok((ruleName, rest)) => {
           cur := rest
           let instantiation = []
@@ -201,7 +204,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
               cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
               try {
                 while cur.contents->String.get(0) != Some("}") {
-                  switch subparser(cur.contents, ~scope, ~gen) {
+                  switch subparser(cur.contents, ~scope, ~assms, ~gen) {
                   | Ok((sg, rest)) => {
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
@@ -211,7 +214,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                 }
                 if cur.contents->String.get(0) == Some("}") {
                   cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
-                  switch subparser(cur.contents,~scope,~gen) {
+                  switch subparser(cur.contents, ~scope, ~assms, ~gen) {
                   | Ok ((newGoal, rest)) => {
                       cur := String.trim(rest)
                       Ok(({ruleName, direction, values:instantiation, path, newGoal, subgoals}, cur.contents))

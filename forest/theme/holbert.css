@@ -289,6 +289,9 @@ display:block;
 .proof-ruleName {
   font-family: "Neo Euler Medium";
 }
+.rule-ref {
+  font-family: "Neo Euler Medium";
+}
 .proof-assumptions-Hybrid > li {
   display: inline-block;
 }
@@ -317,10 +320,58 @@ display:block;
   border-radius: 0px;
   border: 0;
 }
+.proof-denest {
+  border-top: 1px solid rgba(1, 1, 1, 0.2);
+}
 .proof-step {
     padding-left: 5px;
     padding-right: 5px;
     margin-bottom: 5px;
     border-radius: 5px;
     border: 1px solid rgba(1, 1, 1, 0.2);
+    position:relative;
+    box-sizing: border-box;
+}
+.icon-tabs {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+}
+
+/* 3. Hide the actual radio circles completely */
+.icon-tabs input[type="radio"] {
+  display: none;
+}
+
+/* 4. Style the labels to look like tabs */
+.tab-icon {
+  background-color: #e0e0e0; /* Unselected background color */
+  border-left: 2px solid #ccc;
+  border-bottom: 2px solid #ccc;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none; /* Prevents double-click text selection */
+}
+
+/* Fix borders and corners */
+.icon-tabs input[type="radio"]:first-of-type + .tab-icon {
+  border-left: none;
+}
+.icon-tabs input[type="radio"]:last-of-type + .tab-icon {
+  border-radius: 0 6px 0 0;
+}
+
+/* 5. Hover State for unselected tabs */
+.tab-icon:hover {
+  background-color: #d5d5d5;
+}
+
+/* 6. Pure CSS "Selected" Radio State */
+/* When the radio is checked, style the label right next to it (+) */
+.icon-tabs input[type="radio"]:checked + .tab-icon {
+  background-color: #f4f4f9; /* Matches the main box background */
+  border-bottom-color: transparent; /* Makes it look connected to the box */
+  font-weight: bold;
 }

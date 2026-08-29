@@ -31,7 +31,7 @@ module Make = (
     state.rule
     ->Rule.prettyPrintTopLevel(~name=state.name)
     ->String.concat("\n\n")
-    ->String.concat(Proof.prettyPrint(state.proof, ~scope=[]))
+    ->String.concat(Proof.prettyPrint(state.proof, ~scope=[], ~assms=[]))
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
     let _facts = imports.facts
@@ -40,7 +40,7 @@ module Make = (
     switch Rule.parseTopLevel(cur.contents, ~scope=[], ~gen) {
     | Error(e) => Error(e)
     | Ok(((rule, name), s)) =>
-      switch Proof.parse(s, ~scope=[], ~gen) {
+      switch Proof.parse(s, ~scope=[], ~assms=[], ~gen) {
       | Error(e) => Error(e)
       | Ok((_, s')) if String.length(String.trim(s')) > 0 =>
         Error("Trailing input: "->String.concat(s'))
@@ -54,7 +54,7 @@ module Make = (
   }
   let make = props => {
     let ruleStyle = props.imports.ruleStyle->Option.getOr(Hybrid)
-    let ctx: Context.t = {fixes: [], globalFacts: props.imports.facts, localFacts: Dict.make()}
+    let ctx: Context.t = {fixes: [], globalFacts: props.imports.facts, localFacts: [], localFactNames: []}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
     let sidebarRef = React.useRef(Nullable.null)
     let proofChanged = (proof, subst) => {
@@ -79,7 +79,7 @@ module Make = (
       </RuleView>
       <h4> {React.string("Proof")} </h4>
       <ProofView
-        ruleStyle={ruleStyle} scope={[]} proof=checked gen={props.content.gen} onChange=proofChanged
+        ruleStyle={ruleStyle} scope={[]} assms={[]} proof=checked gen={props.content.gen} onChange=proofChanged
       />
       {switch props.content.substFailed {
       | Some(msg) => React.string(msg)

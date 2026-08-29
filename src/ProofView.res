@@ -98,6 +98,7 @@ module Make = (
   type props = {
     proof: Proof.checked,
     scope: array<Term.meta>,
+    assms: array<string>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Proof.checked, Term.subst) => unit,
@@ -120,12 +121,21 @@ module Make = (
     switch props.proof {
     | Proof.Checked({fixes, assumptions, method, rule}) => {
         let scope = Array.concat(fixes, props.scope)
+        let assms = Array.concat(props.assms,assumptions)
         <div className="proof-step">
+      /*    <div className="icon-tabs">
+            <input type_="radio" id="tab-info" name="box-tabs" checked={true} />
+            <label htmlFor="tab-info" className="tab-icon">{React.string("T")}</label>
+            <input type_="radio" id="tab-settings" name="box-tabs" />
+            <label htmlFor="tab-settings" className="tab-icon">{React.string("X")}</label>
+            <input type_="radio" id="tab-chat" name="box-tabs" />
+            <label htmlFor="tab-chat" className="tab-icon">{React.string("Y")}</label>
+          </div>*/
           {if fixes->Array.length != 0 {
-            <>
+              <>            
               <span className="proof-text"> {React.string("For any ")} </span>
               <ScopeView scope=fixes />
-            </>
+              </>
           } else {
             <> </>
           }}
@@ -206,6 +216,7 @@ module Make = (
                   make({
                     proof: p["proof"],
                     scope: p["scope"],
+                    assms: p["assms"],
                     ruleStyle: p["ruleStyle"],
                     gen: p["gen"],
                     onChange: p["onChange"],
@@ -214,6 +225,7 @@ module Make = (
                 {
                   method,
                   scope,
+                  assms,
                   ruleStyle: props.ruleStyle,
                   gen: props.gen,
                   onChange: (newm, subst) => {

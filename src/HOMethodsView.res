@@ -4,6 +4,7 @@ module ConstructorDisjointnessView = {
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<string>,
+    assms: array<string>,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
     onChange: (Method.t<'a>, HOTerm.subst) => unit,
@@ -12,6 +13,7 @@ module ConstructorDisjointnessView = {
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<string>,
+    "assms": array<string>,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
@@ -20,7 +22,7 @@ module ConstructorDisjointnessView = {
     props => {
       <div>
         <b> {React.string("disjointness ")} </b>
-        <span className="proof-ruleName"> {React.string(props.method.factName)} </span>
+        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.assms />
       </div>
     }
 }
@@ -31,6 +33,7 @@ module ConstructorInjectivityView = {
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<string>,
+    assms: array<string>,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
     onChange: (Method.t<'a>, HOTerm.subst) => unit,
@@ -39,6 +42,7 @@ module ConstructorInjectivityView = {
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<string>,
+    "assms": array<string>,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
@@ -47,11 +51,12 @@ module ConstructorInjectivityView = {
     props => {
       <div>
         <b> {React.string("injectivity ")} </b>
-        <span className="proof-ruleName"> {React.string(props.method.factName)} </span>
+        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.assms />
         <div className="proof-denest">
         {React.createElement(subRender,{
           "proof": props.method.subgoal,
           "scope": props.scope,
+          "assms": props.assms,
           "ruleStyle": props.ruleStyle,
           "gen": props.gen,
           "onChange": (newa, subst: HOTerm.subst) => 

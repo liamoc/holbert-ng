@@ -4,7 +4,8 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<string>,
+    scope: array<Term.meta>,
+    assms: array<string>,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
@@ -12,7 +13,8 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<string>,
+    "scope": array<Term.meta>,
+    "assms": array<string>,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
@@ -21,7 +23,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     props => {
       <div>
         <b> {React.string("rewrite ")} </b>
-        <span className="proof-ruleName"> {React.string(props.method.ruleName)} </span>
+        <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.assms />
         {
           if props.method.subgoals->Array.length > 0 { 
             <ul className="subgoals">
@@ -33,6 +35,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                   {
                     "proof": sg,
                     "scope": props.scope,
+                    "assms": props.assms,
                     "ruleStyle": props.ruleStyle,
                     "gen": props.gen,
                     "onChange": (newa, subst: Term.subst) =>
@@ -51,6 +54,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
         {React.createElement(subRender,{
           "proof": props.method.newGoal,
           "scope": props.scope,
+          "assms": props.assms,
           "ruleStyle": props.ruleStyle,
           "gen": props.gen,
           "onChange": (newa, subst: Term.subst) => 
