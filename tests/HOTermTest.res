@@ -1,10 +1,10 @@
 open Zora
 
-module Util = TestUtil.MakeTerm(SHOTerm)
+module Util = TestUtil.MakeTerm(HOTerm)
 
 
 let parse = (input: string) =>
-  SHOTerm.parse(input, ~scope=[], ~gen=SHOTerm.makeGen())->Result.getExn->Pair.first
+  HOTerm.parse(input, ~scope=[], ~gen=HOTerm.makeGen())->Result.getExn->Pair.first
 
 zoraBlock("unification", t => {
   let x = parse("(Implies A B)")
