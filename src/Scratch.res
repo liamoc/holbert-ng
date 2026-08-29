@@ -29,6 +29,7 @@ module HOTermView = HOTermView.Make(StringSymbol.Atom, StringSymbol.AtomView, HO
 module SHOTermJView = TermViewAsJudgmentView.Make(SHOTerm, SHOTerm, SHOTermView)
 module AxiomS = Editable.TextArea(AxiomSet.Make(SHOTerm, SHOTerm, SHOTermJView))
 module InductiveS = Editable.TextArea(InductiveSet)
+module SHORewriteView = RewriteView.Make(SHOTerm, SHOTerm)
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   SHOTerm,
   SHOTerm,

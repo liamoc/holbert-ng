@@ -44,6 +44,18 @@ module type JUDGMENT = {
   let concrete: t => bool
 }
 
+module type REWRITABLE_JUDGMENT = {
+  module Term: TERM
+  include JUDGMENT with module Term := Term
+  type path
+  let asEquation: t => option<(Term.t, Term.t)>
+  let locate: (t, path) => option<(Term.t, array<Term.meta>)>
+  let replaceAt: (t, path, Term.t) => t
+  let positions: t => array<(path, Term.t, array<Term.meta>)>
+  let prettyPrintPath: path => string
+  let parsePath: string => (path, string)
+}
+
 module type TERM_VIEW = {
   module Term: TERM
   type props = {term: Term.t, scope: array<Term.meta>}
