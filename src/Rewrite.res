@@ -29,7 +29,6 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     newGoal: f(step.newGoal),
     subgoals: step.subgoals->Array.map(f),
   }
-
   let orient = (dir, lhs, rhs) =>
     switch dir {
     | Forward => (lhs, rhs)
@@ -92,28 +91,32 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
           | Some((eqLhs, eqRhs)) =>
             [Forward, Backward]->Array.flatMap(direction => {
               let (lhs, rhs) = orient(direction, eqLhs, eqRhs)
-              Judgment.positions(goal)->Array.filterMap(((path, subterm, boundScope)) =>
-                switch Term.unify(Term.upshift(lhs, boundScope->Array.length), subterm, ~gen)->Seq.head {
-                | None => None
-                | Some(subst) =>
-                  let values = insts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
-                  let replacement = Term.reduce(Term.substitute(Term.upshift(rhs, boundScope->Array.length), subst))
-                  let newGoal = Judgment.replaceAt(goal, path, replacement)
-                  let newGoalRule: Rule.t = {Rule.vars: [], premises: [], conclusion: newGoal}
-                  let subgoalRules = premises->Array.map(p => p->Rule.substitute(subst))
-                  Some((
-                    {
-                      ruleName,
-                      direction,
-                      path,
-                      values,
-                      newGoal: newGoalRule->mkSubgoal,
-                      subgoals: subgoalRules->Array.map(mkSubgoal),
-                    },
-                    subst,
-                  ))
-                }
-              )
+              if !Term.concrete(lhs) {
+                []
+              } else {
+                Judgment.positions(goal)->Array.filterMap(((path, subterm, boundScope)) =>
+                  switch Term.unify(Term.upshift(lhs, boundScope->Array.length), subterm, ~gen)->Seq.head {
+                  | None => None
+                  | Some(subst) =>
+                    let values = insts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
+                    let replacement = Term.reduce(Term.substitute(Term.upshift(rhs, boundScope->Array.length), subst))
+                    let newGoal = Judgment.replaceAt(goal, path, replacement)
+                    let newGoalRule: Rule.t = {Rule.vars: [], premises: [], conclusion: newGoal}
+                    let subgoalRules = premises->Array.map(p => p->Rule.substitute(subst))
+                    Some((
+                      {
+                        ruleName,
+                        direction,
+                        path,
+                        values,
+                        newGoal: newGoalRule->mkSubgoal,
+                        subgoals: subgoalRules->Array.map(mkSubgoal),
+                      },
+                      subst,
+                    ))
+                  }
+                )
+              }
             })
           }
         }
@@ -135,7 +138,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
               Results.Action(`${Judgment.prettyPrintPath(step.path)} ${dirLabel(step.direction)}`, step, subst)),
           ),
         ]
-      }
+      }      
     })
   }
 
@@ -167,6 +170,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
       ->String.concat("}")
       ->String.concat(Util.newline)
       ->String.concat(subprinter(it.newGoal,~scope, ~indentation))
+      ->String.concat(Util.newline)
     }
 
   exception InternalParseError(string)

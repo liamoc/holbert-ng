@@ -237,6 +237,7 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 .term-constructor {
     font-family: "Computer Modern Sans";
     color: var(--constructor-col);
+    font-weight:bold;
 }
 .placeholder {
     color: var(--placeholder-fg-col);
@@ -302,6 +303,8 @@ display:block;
 }
 .subgoals {
   list-style-type: none;
+  padding-inline-start: 20px;
+  margin: 0;
 }
 .subgoals > li {
   margin-bottom:5px;

@@ -52,11 +52,10 @@ module Make = (
     let displayFixes = [...prf.fixes]
     Array.reverse(displayFixes)
     String.padStart("", indentation, " ")
-    ->String.concat(displayFixes->Array.map(Term.prettyPrintMeta)->Array.join(""))
+    ->String.concat(displayFixes->Array.map(t=> t->Term.prettyPrintMeta->String.concat(" "))->Array.join(""))
     ->String.concat(
       prf.assumptions
-      ->Array.map(s => String.concat(" ", s))
-      ->Array.join(""),
+      ->Array.join(" "),
     )
     ->String.concat(
       if Array.length(prf.assumptions) == 0 {

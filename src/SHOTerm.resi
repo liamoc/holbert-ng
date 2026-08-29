@@ -20,7 +20,9 @@ let unstrip: (t, array<t>) => t
 
 type path
 
+let mkEquation: (t,t) => t
 
+// From REWRITABLE_JUDGMENT
 let asEquation: t => option<(t, t)> 
 let locate: (t, path) => option<(t, array<string>)>
 let replaceAt: (t, path, t) => t

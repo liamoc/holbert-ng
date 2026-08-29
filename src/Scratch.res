@@ -33,12 +33,15 @@ module SHORewriteView = RewriteView.Make(SHOTerm, SHOTerm)
 module DerivationsOrLemmasView = MethodView.CombineMethodView(
   SHOTerm,
   SHOTerm,
-  MethodView.CombineMethodView(
-    SHOTerm, SHOTerm,
-    SHORewriteView,
-    MethodView.CombineMethodView(
-      SHOTerm,
-      SHOTerm,
+  MethodView.CombineMethodView(SHOTerm, SHOTerm,
+    MethodView.CombineMethodView(SHOTerm, SHOTerm,
+      SHORewriteView, 
+      MethodView.CombineMethodView(SHOTerm, SHOTerm,
+        SHOMethodsView.ConstructorDisjointnessView,
+        SHOMethodsView.ConstructorInjectivityView,
+      )
+    ),
+    MethodView.CombineMethodView(SHOTerm,SHOTerm,
       MethodView.DerivationView(SHOTerm, SHOTerm),
       MethodView.LemmaView(SHOTerm, SHOTerm, SHOTermJView),
     )

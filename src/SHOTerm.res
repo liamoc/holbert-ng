@@ -81,15 +81,6 @@ let rec betaReduce = term =>
   }
 
 
-let rec concrete = term => true /* term =>
-  switch term {
-  | Symbol(_) | Var(_) => true
-  | Schematic(_) => false
-  | Lam({body}) => concrete(body)
-  | App({func, arg}) => concrete(func) && concrete(arg)
-  }*/
-
-
 let rec structEqual = (a, b) =>
   switch (a, b) {
   | (Symbol({name: n1, constructor: c1}), Symbol({name: n2, constructor: c2})) =>
@@ -217,6 +208,17 @@ let rec unstrip = (term: t, args: array<t>): t => {
       unstrip(App({func: term, arg: head}), rest)
     }
   }  
+
+
+
+
+let rec concrete = t => {
+  let (head, _args) = strip(t)
+  switch head {
+  | Schematic(_) => false
+  | _ => true
+  }
+}
 
 
 // Is `t` of the form `Schematic(n)[x_i0, ..., x_i(k-1)]` with each
@@ -537,7 +539,7 @@ let tokenize = (str0: string, ~scope: array<string>, ~gen=?): (token, string) =>
             let rest = String.sliceToEnd(str, ~start=RegExp.lastIndex(reName))
             switch RegExp.Result.matches(res) {
             | [n] => if n->String.charAt(0)=="@" {
-                (ConsT(n), rest)
+                (ConsT(n->String.sliceToEnd(~start=1)), rest)
               } else if rest->String.charAt(0)=="." {
                 (NameT(n), rest->String.sliceToEnd(~start=1))
               } else {
@@ -679,10 +681,12 @@ let rec replaceAtFrom = (term: t, path: path, i: int, replacement: t): t =>
   }
 let replaceAt = (term, path, replacement) => replaceAtFrom(term, path, 0, replacement)
 
-// Recognise App(App(Symbol("="), A), B)
+let mkEquation = (a, b) =>
+  App({func: App({func: Symbol({name: "=", constructor: false}), arg: a}), arg: b})
+
 let asEquation = (t: t): option<(t, t)> =>
   switch t {
-  | App({func: App({func: Symbol({name: "="}), arg: a}), arg: b}) => Some((a, b))
+  | App({func: App({func: Symbol({name: "=", constructor: false}), arg: a}), arg: b}) => Some((a, b))
   | _ => None
   }
   

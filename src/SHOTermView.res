@@ -56,7 +56,11 @@ type props1 = {term: SHOTerm.t, scope: array<string>, local_scope: array<string>
 let rec make1 = ({term, scope, local_scope,brackets}) =>
   switch term {
   | Var({idx}) => viewVar({idx, scope, local_scope})
-  | Symbol({name: s}) => <span className="term-const"> {React.string(s)} </span>
+  | Symbol({name: s, constructor}) => if constructor { 
+    <span className="term-constructor"> {React.string(s)} </span> 
+  } else {
+    <span className="term-const"> {React.string(s)} </span> 
+  }
   | Schematic({schematic: s}) =>
     <span className="term-schematic">
       {React.string("?")}
