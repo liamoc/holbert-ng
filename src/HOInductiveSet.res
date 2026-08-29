@@ -1,9 +1,9 @@
 open Signatures
 open Component
 
-module Term = SHOTerm
-module Judgment = SHOTerm
-module JudgmentView = TermViewAsJudgmentView.Make(Term, Judgment, SHOTermView)
+module Term = HOTerm
+module Judgment = HOTerm
+module JudgmentView = TermViewAsJudgmentView.Make(Term, Judgment, HOTermView)
 module Rule = Rule.Make(Term, Judgment)
 module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
 module Ports = Ports(Term, Judgment)

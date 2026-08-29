@@ -1,6 +1,5 @@
 open Signatures
 open Method
-open HOTermMethod
 module type METHOD_VIEW = {
   module Term: TERM
   module Judgment: JUDGMENT with module Term := Term
@@ -160,64 +159,6 @@ module LemmaView = (
             "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
           },
         )}
-      </div>
-    }
-}
-
-module ConstructorNeqView = (
-  HOTerm: HOTerm.S,
-  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
-) => {
-  module Method = ConstructorNeq(HOTerm, Judgment)
-  type props<'a> = {
-    method: Method.t<'a>,
-    scope: array<HOTerm.meta>,
-    ruleStyle: RuleView.style,
-    gen: HOTerm.gen,
-    onChange: (Method.t<'a>, HOTerm.subst) => unit,
-  }
-  type srProps<'a> = {
-    "proof": 'a,
-    "scope": array<HOTerm.meta>,
-    "ruleStyle": RuleView.style,
-    "gen": HOTerm.gen,
-    "onChange": ('a, HOTerm.subst) => unit,
-  }
-  let make = (_subRender: srProps<'a> => React.element) =>
-    _props => {
-      <div>
-        <b> {React.string("constructor_neq")} </b>
-      </div>
-    }
-}
-
-module ConstructorInjView = (
-  HOTerm: HOTerm.S,
-  Judgment: JUDGMENT with module Term := HOTerm and type t = HOTerm.t,
-) => {
-  module Method = ConstructorInj(HOTerm, Judgment)
-  type props<'a> = {
-    method: Method.t<'a>,
-    scope: array<HOTerm.meta>,
-    ruleStyle: RuleView.style,
-    gen: HOTerm.gen,
-    onChange: (Method.t<'a>, HOTerm.subst) => unit,
-  }
-  type srProps<'a> = {
-    "proof": 'a,
-    "scope": array<HOTerm.meta>,
-    "ruleStyle": RuleView.style,
-    "gen": HOTerm.gen,
-    "onChange": ('a, HOTerm.subst) => unit,
-  }
-  let make = (_subRender: srProps<'a> => React.element) =>
-    props => {
-      <div>
-        <b>
-          {React.string(
-            `constructor_inj ${props.method.source} ${Int.toString(props.method.argIndex)}`,
-          )}
-        </b>
       </div>
     }
 }

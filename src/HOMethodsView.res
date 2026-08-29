@@ -1,20 +1,20 @@
 module ConstructorDisjointnessView = {
-  module Method = SHOMethods.ConstructorDisjointness
+  module Method = HOMethods.ConstructorDisjointness
 
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<string>,
     ruleStyle: RuleView.style,
-    gen: SHOTerm.gen,
-    onChange: (Method.t<'a>, SHOTerm.subst) => unit,
+    gen: HOTerm.gen,
+    onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
 
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<string>,
     "ruleStyle": RuleView.style,
-    "gen": SHOTerm.gen,
-    "onChange": ('a, SHOTerm.subst) => unit,
+    "gen": HOTerm.gen,
+    "onChange": ('a, HOTerm.subst) => unit,
   }
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -26,22 +26,22 @@ module ConstructorDisjointnessView = {
 }
 
 module ConstructorInjectivityView = {
-  module Method = SHOMethods.ConstructorInjectivity
+  module Method = HOMethods.ConstructorInjectivity
 
   type props<'a> = {
     method: Method.t<'a>,
     scope: array<string>,
     ruleStyle: RuleView.style,
-    gen: SHOTerm.gen,
-    onChange: (Method.t<'a>, SHOTerm.subst) => unit,
+    gen: HOTerm.gen,
+    onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
 
   type srProps<'a> = {
     "proof": 'a,
     "scope": array<string>,
     "ruleStyle": RuleView.style,
-    "gen": SHOTerm.gen,
-    "onChange": ('a, SHOTerm.subst) => unit,
+    "gen": HOTerm.gen,
+    "onChange": ('a, HOTerm.subst) => unit,
   }
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -54,7 +54,7 @@ module ConstructorInjectivityView = {
           "scope": props.scope,
           "ruleStyle": props.ruleStyle,
           "gen": props.gen,
-          "onChange": (newa, subst: SHOTerm.subst) => 
+          "onChange": (newa, subst: HOTerm.subst) => 
             props.onChange(props.method->Method.updateGoal(_=>newa), subst), 
         })}
         </div>      

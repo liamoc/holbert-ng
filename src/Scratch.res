@@ -23,35 +23,31 @@ module Final = AtomDef.MakeAtomChoiceAndView(
   StringNatSymbol.AtomView,
 )
 
-module HOTerm = HOTerm.Make(StringSymbol.Atom)
-module HOTermView = HOTermView.Make(StringSymbol.Atom, StringSymbol.AtomView, HOTerm)
 
-module SHOTermJView = TermViewAsJudgmentView.Make(SHOTerm, SHOTerm, SHOTermView)
-module AxiomS = Editable.TextArea(AxiomSet.Make(SHOTerm, SHOTerm, SHOTermJView))
-module InductiveS = Editable.TextArea(InductiveSet)
-module SHORewriteView = RewriteView.Make(SHOTerm, SHOTerm)
-module DerivationsOrLemmasView = MethodView.CombineMethodView(
-  SHOTerm,
-  SHOTerm,
-  MethodView.CombineMethodView(SHOTerm, SHOTerm,
-    MethodView.CombineMethodView(SHOTerm, SHOTerm,
-      SHORewriteView, 
-      MethodView.CombineMethodView(SHOTerm, SHOTerm,
-        SHOMethodsView.ConstructorDisjointnessView,
-        SHOMethodsView.ConstructorInjectivityView,
+module HOTermJView = TermViewAsJudgmentView.Make(HOTerm, HOTerm, HOTermView)
+module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTerm, HOTermJView))
+module InductiveS = Editable.TextArea(HOInductiveSet)
+module HORewriteView = RewriteView.Make(HOTerm, HOTerm)
+module DerivationsOrLemmasView = MethodView.CombineMethodView(HOTerm,HOTerm,
+  MethodView.CombineMethodView(HOTerm, HOTerm,
+    MethodView.CombineMethodView(HOTerm, HOTerm,
+      HORewriteView, 
+      MethodView.CombineMethodView(HOTerm, HOTerm,
+        HOMethodsView.ConstructorDisjointnessView,
+        HOMethodsView.ConstructorInjectivityView,
       )
     ),
-    MethodView.CombineMethodView(SHOTerm,SHOTerm,
-      MethodView.DerivationView(SHOTerm, SHOTerm),
-      MethodView.LemmaView(SHOTerm, SHOTerm, SHOTermJView),
+    MethodView.CombineMethodView(HOTerm,HOTerm,
+      MethodView.DerivationView(HOTerm, HOTerm),
+      MethodView.LemmaView(HOTerm, HOTerm, HOTermJView),
     )
   ),
-  MethodView.EliminationView(SHOTerm, SHOTerm),
+  MethodView.EliminationView(HOTerm, HOTerm),
 )
 
 // Temporarily use DLRView (without Elimination) due to HOTerm unification bug
-module TheoremS = Editable.TextArea(Theorem.Make(SHOTerm, SHOTerm, SHOTermJView, DerivationsOrLemmasView))
-module ConfS = ConfigBlock.Make(SHOTerm, SHOTerm)
+module TheoremS = Editable.TextArea(Theorem.Make(HOTerm, HOTerm, HOTermJView, DerivationsOrLemmasView))
+module ConfS = ConfigBlock.Make(HOTerm, HOTerm)
 
 module StringSExp = SExp.Make(Final.Atom)
 module TermView = SExpView.Make(Final.Atom, Final.AtomView, StringSExp)

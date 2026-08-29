@@ -80,31 +80,3 @@ zoraBlock("string terms", t => {
     },
   )
 })
-
-zoraBlock("string HOTerms", t => {
-  module StringHOTerm = HOTerm.Make(StringSymbol.Atom)
-  let wrapString = (s): StringHOTerm.t => Symbol({
-    name: AtomBase.AnyValue(AtomBase.String.Tag, s),
-    constructor: false,
-  })
-  let wrapSymbol = (s): StringHOTerm.t => Symbol({
-    name: AtomBase.AnyValue(Symbolic.Base.Tag, s),
-    constructor: false,
-  })
-  let app = StringHOTerm.app
-  module T = MakeTest(StringHOTerm, StringHOTerm)
-  t->T.testParseInner(
-    `[s1. ("$s1" p) |- ("($s1)" p)]`,
-    {
-      vars: ["s1"],
-      premises: [
-        {
-          vars: [],
-          premises: [],
-          conclusion: app(wrapString([Var({idx: 0})]), [wrapSymbol("p")]),
-        },
-      ],
-      conclusion: app(wrapString([String("("), Var({idx: 0}), String(")")]), [wrapSymbol("p")]),
-    },
-  )
-})

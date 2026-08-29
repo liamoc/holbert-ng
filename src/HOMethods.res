@@ -1,6 +1,6 @@
 module ConstructorDisjointness = {
-  module Term = SHOTerm
-  module Judgment = SHOTerm
+  module Term = HOTerm
+  module Judgment = HOTerm
   module Rule = Rule.Make(Term, Judgment)
   module Context = Method.Context(Term, Judgment)
   module Results = Method.MethodResults(Term)
@@ -78,8 +78,8 @@ module ConstructorDisjointness = {
 
 
 module ConstructorInjectivity = {
-  module Term = SHOTerm
-  module Judgment = SHOTerm
+  module Term = HOTerm
+  module Judgment = HOTerm
   module Rule = Rule.Make(Term, Judgment)
   module Context = Method.Context(Term, Judgment)
   module Results = Method.MethodResults(Term)
