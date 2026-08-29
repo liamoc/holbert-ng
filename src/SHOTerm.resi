@@ -11,6 +11,18 @@ include Signatures.TERM
   and type schematic = int
   and type subst = Belt.Map.Int.t<t>
 
+
+
 let mapTerms: (t, t => t) => t
 let strip: t => (t, array<t>)
 let unstrip: (t, array<t>) => t
+
+
+type path
+
+let asEquation: t => option<(t, t)> 
+let locate: (t, path) => option<(t, array<string>)>
+let replaceAt: (t, path, t) => t
+let prettyPrintPath : path => string
+let positions: t => array<(path, t, array<string>)>
+let parsePath : string => (path, string)

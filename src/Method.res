@@ -171,14 +171,15 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
         None
       } else {
         let substs = Judgment.unify(res.conclusion, j, ~gen)->Seq.take(seqSizeLimit)->Seq.toArray
-        let new = {
+        let makeNew = (subst) => {
           ruleName: key,
-          instantiation: insts,
+          instantiation: insts->Array.map(i => Term.substitute(i, subst)->Term.reduce),
           subgoals: res.premises->Array.map(f),
         }
+        
         switch substs {
         | [] => None
-        | [subst] => Some(Results.Action(`intro ${key}`, new, subst))
+        | [subst] => Some(Results.Action(`intro ${key}`, makeNew(subst), subst))
         | _ =>
           Some(
             Delay(
@@ -200,7 +201,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
                       },
                     )
                     ->Array.join(", ")
-                  Results.Action(s, new, subst)
+                  Results.Action(s, makeNew(subst), subst)
                 }),
             ),
           )
@@ -430,13 +431,14 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
                 ->Seq.take(seqSizeLimit)
                 ->Seq.forEach(
                   ruleSub => {
+                    let subst = Term.mergeSubsts(elimSub, ruleSub)
+                    let values = ruleInsts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
                     let new = {
                       ruleName,
                       elimName,
-                      instantiation: ruleInsts,
+                      instantiation: values,
                       subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
                     }
-                    let subst = Term.mergeSubsts(elimSub, ruleSub)
                     subtree->Array.push(Results.Action("with " ++ ruleName, new, subst))
                   },
                 )

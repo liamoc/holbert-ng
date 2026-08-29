@@ -86,6 +86,12 @@ module TextArea = (Underlying: COMPONENT) => {
                 setEditing(_ => true)
               }}
             />
+            <span
+              className="editor-button button-icon button-icon-blue typcn typcn-arrow-loop"
+              onClick={_ => {
+                props.reset()
+              }}
+            />
           </div>
         </div>
       }

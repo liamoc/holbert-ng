@@ -307,6 +307,13 @@ display:block;
   margin-bottom:5px;
 }
 
+.proof-denest > .proof-step {
+  padding-left: 0px;
+  padding-right: 0px;
+  margin-bottom: 0px;
+  border-radius: 0px;
+  border: 0;
+}
 .proof-step {
     padding-left: 5px;
     padding-right: 5px;

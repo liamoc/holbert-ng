@@ -67,18 +67,19 @@ let substDeBruijn = (term, values, ~from=0) => {
   go(term, 0)
 }
 
-let rec reduce = term =>
+let rec betaReduce = term =>
   switch term {
   | Symbol(_) | Var(_) | Schematic(_) => term
-  | Lam({name, body}) => Lam({name, body: reduce(body)})
+  | Lam({name, body}) => Lam({name, body: betaReduce(body)})
   | App({func, arg}) =>
-    let func' = reduce(func)
-    let arg' = reduce(arg)
+    let func' = betaReduce(func)
+    let arg' = betaReduce(arg)
     switch func' {
-    | Lam({body}) => reduce(substDeBruijn(body, [arg'], ~from=0))
+    | Lam({body}) => betaReduce(substDeBruijn(body, [arg'], ~from=0))
     | _ => App({func: func', arg: arg'})
     }
   }
+
 
 let rec concrete = term => true /* term =>
   switch term {
@@ -100,6 +101,48 @@ let rec structEqual = (a, b) =>
     structEqual(f1, f2) && structEqual(a1, a2)
   | _ => false
   }
+
+
+// Does Var(depth) occur free in `t`?
+let rec occursFree = (t, depth) =>
+  switch t {
+  | Symbol(_) | Schematic(_) => false
+  | Var({idx}) => idx == depth
+  | Lam({body}) => occursFree(body, depth + 1)
+  | App({func, arg}) => occursFree(func, depth) || occursFree(arg, depth)
+  }
+
+// Inverse of upshift(_, 1): only valid when Var(0) doesn't occur free
+// (see occursFree above).
+let downshift1 = t => {
+  let rec go = (t, depth) =>
+    switch t {
+    | Symbol(_) | Schematic(_) => t
+    | Var({idx}) => idx > depth ? Var({idx: idx - 1}) : t
+    | Lam({name, body}) => Lam({name, body: go(body, depth + 1)})
+    | App({func, arg}) => App({func: go(func, depth), arg: go(arg, depth)})
+    }
+  go(t, 0)
+}
+
+// Contract eta-redexes bottom-up: Lam(App(f, Var(0))) ~> f, whenever
+// Var(0) isn't free in f. Assumes its input is already beta-normal
+// (produced by `betaReduce`).
+// Contraction can't introduce new beta redexes, so a single bottom-up 
+// pass suffices.
+let rec etaNormalise = t => {
+  let t' = switch t {
+  | Symbol(_) | Var(_) | Schematic(_) => t
+  | Lam({name, body}) => Lam({name, body: etaNormalise(body)})
+  | App({func, arg}) => App({func: etaNormalise(func), arg: etaNormalise(arg)})
+  }
+  switch t' {
+  | Lam({body: App({func, arg: Var({idx: 0})})}) if !occursFree(func, 0) => downshift1(func)
+  | _ => t'
+  }
+}
+
+let reduce = t => etaNormalise(betaReduce(t))
 
 let equivalent = (a, b) => structEqual(reduce(a), reduce(b))
 
@@ -150,14 +193,30 @@ let substEqual = (s1, s2) =>
 
 // ---------- unification ----------
 
-// Application spine: head plus args in application order.
-let rec spineList = t =>
-  switch t {
+let rec strip = (term: t): (t, array<t>) => {
+  switch term {
   | App({func, arg}) =>
-    let (h, args) = spineList(func)
-    (h, Belt.List.concat(args, list{arg}))
-  | _ => (t, list{})
+    let (peeledFunc, peeledArgs) = strip(func)
+    (peeledFunc, Array.concat(peeledArgs, [arg]))
+  | _ => (term, [])
   }
+}  
+let rec stripLam = (it: t): (array<string>, t) =>
+  switch it {
+  | Lam({name, body}) =>
+    let (names, body) = stripLam(body)
+    (Array.concat([name], names), body)
+  | _ => ([], it)
+  }
+let rec unstrip = (term: t, args: array<t>): t => {
+    if args->Array.length == 0 {
+      term
+    } else {
+      let head = args[0]->Option.getExn
+      let rest = args->Array.sliceToEnd(~start=1)
+      unstrip(App({func: term, arg: head}), rest)
+    }
+  }  
 
 
 // Is `t` of the form `Schematic(n)[x_i0, ..., x_i(k-1)]` with each
@@ -168,17 +227,17 @@ let rec spineList = t =>
 // accepted as a "quasi-pattern". See `makeSolution` for how the
 // resulting ambiguity is resolved.
 let asPattern = t => {
-  let (head, args) = spineList(t)
+  let (head, args) = strip(t)
   switch head {
   | Schematic({schematic}) =>
-    let idxs = Belt.List.map(args, a =>
+    let idxs = Array.map(args, a =>
       switch a {
       | Var({idx}) => Some(idx)
       | _ => None
       }
     )
-    Belt.List.every(idxs, Belt.Option.isSome)
-      ? Some((schematic, idxs->Belt.List.map(Belt.Option.getExn)->Belt.List.toArray))
+    Array.every(idxs, Belt.Option.isSome)
+      ? Some((schematic, Array.map(idxs, Belt.Option.getExn)))
       : None
   | _ => None
   }
@@ -189,10 +248,10 @@ let lastIndexOf = (arr, p) => {
   let rec go = i =>
     i < 0
       ? None
-      : Belt.Array.getExn(arr, i) == p
+      : arr->Belt.Array.getExn(i) == p
       ? Some(i)
       : go(i - 1)
-  go(Belt.Array.length(arr) - 1)
+  go(arr->Array.length - 1)
 }
 
 // Build the closed solution `λ x0' .. x(k-1)'. body` for
@@ -207,8 +266,8 @@ let lastIndexOf = (arr, p) => {
 // This is a deliberate choice among several sound solutions, not a 
 // canonical one.
 let makeSolution = (rhs, spineArr) => {
-  let k = Belt.Array.length(spineArr)
-  let maxIdx = Belt.Array.reduce(spineArr, -1, (m, i) => max(m, i))
+  let k = spineArr->Array.length
+  let maxIdx = spineArr->Array.reduce(-1, (m, i) => max(m, i))
   let values = Belt.Array.makeBy(maxIdx + 1, p =>
     switch lastIndexOf(spineArr, p) {
     | Some(j) => Var({idx: k - 1 - j})
@@ -273,16 +332,16 @@ let tryFlexFlexSame = (n, spine1, spine2, gen) =>
   switch gen {
   | None => None
   | Some(g) =>
-    let k = Belt.Array.length(spine1)
-    if k != Belt.Array.length(spine2) {
+    let k = spine1->Array.length
+    if k != spine2->Array.length {
       None
     } else {
       let agree =
         Belt.Array.range(0, k - 1)->Belt.Array.keep(i =>
-          Belt.Array.getExn(spine1, i) == Belt.Array.getExn(spine2, i)
+          spine1->Belt.Array.getExn(i) == spine2->Belt.Array.getExn(i)
         )
       let n' = fresh(g)
-      let body = Belt.Array.reduce(agree, Schematic({schematic: n'}), (acc, i) => App({
+      let body = agree->Array.reduce(Schematic({schematic: n'}), (acc, i) => App({
         func: acc,
         arg: Var({idx: k - 1 - i}),
       }))
@@ -293,25 +352,23 @@ let tryFlexFlexSame = (n, spine1, spine2, gen) =>
 
 
 let unifyRigidHeaded = (t1, t2, gen, unifyStep) => {
-  let (h1, args1) = spineList(t1)
-  let (h2, args2) = spineList(t2)
+  let (h1, a1) = strip(t1)
+  let (h2, a2) = strip(t2)
   let headsMatch = switch (h1, h2) {
   | (Symbol({name: n1, constructor: c1}), Symbol({name: n2, constructor: c2})) =>
     n1 == n2 && c1 == c2
   | (Var({idx: i1}), Var({idx: i2})) => i1 == i2
   | _ => false
   }
-  let a1 = Belt.List.toArray(args1)
-  let a2 = Belt.List.toArray(args2)
-  if headsMatch && Belt.Array.length(a1) == Belt.Array.length(a2) {
-    let n = Belt.Array.length(a1)
+  if headsMatch && Array.length(a1) == Array.length(a2) {
+    let n = Array.length(a1)
     let rec loop = (i, acc) =>
       if i >= n {
         Some(acc)
       } else {
         switch unifyStep(
-          substitute(Belt.Array.getExn(a1, i), acc),
-          substitute(Belt.Array.getExn(a2, i), acc),
+          substitute(a1->Belt.Array.getExn(i), acc),
+          substitute(a2->Belt.Array.getExn(i), acc),
           gen,
         ) {
         | None => None
@@ -325,8 +382,8 @@ let unifyRigidHeaded = (t1, t2, gen, unifyStep) => {
 }
 
 let rec unifyStep = (t1, t2, gen) => {
-  let t1 = reduce(t1)
-  let t2 = reduce(t2)
+  let t1 = betaReduce(t1)
+  let t2 = betaReduce(t2)
   if structEqual(t1, t2) {
     Some(makeSubst())
   } else {
@@ -353,41 +410,18 @@ let rec unifyStep = (t1, t2, gen) => {
 }
 
 let unify = (t1, t2, ~gen=?) => {
-  Console.log(("U",t1,t2))
   switch unifyStep(t1, t2, gen) {
-  | Some(s) => {Console.log(s); Seq.cons(s, Seq.empty)}
+  | Some(s) => Seq.cons(s, Seq.empty)
   | None => Seq.empty
   }
 }
+
+
 
 let prettyPrintVar = (idx: int, scope: array<string>) =>
   switch scope[idx] {
   | Some(n) if Array.indexOf(scope, n) == idx => n
   | _ => "\\"->String.concat(String.make(idx))
-  }  
-let rec strip = (term: t): (t, array<t>) => {
-  switch term {
-  | App({func, arg}) =>
-    let (peeledFunc, peeledArgs) = strip(func)
-    (peeledFunc, Array.concat(peeledArgs, [arg]))
-  | _ => (term, [])
-  }
-}  
-let rec stripLam = (it: t): (array<string>, t) =>
-  switch it {
-  | Lam({name, body}) =>
-    let (names, body) = stripLam(body)
-    (Array.concat([name], names), body)
-  | _ => ([], it)
-  }
-let rec unstrip = (term: t, args: array<t>): t => {
-    if args->Array.length == 0 {
-      term
-    } else {
-      let head = args[0]->Option.getExn
-      let rest = args->Array.sliceToEnd(~start=1)
-      unstrip(App({func: term, arg: head}), rest)
-    }
   }  
 let rec prettyPrint = (it: t, ~scope: array<string>) =>
   switch it {
@@ -615,3 +649,81 @@ let parse = (str: string, ~scope: array<string>, ~gen=?) => {
   }
 }
 let mapTerms = (t, f) => f(t)
+
+
+type step = Func | Arg | Body
+type path = array<step>
+let rec locateFrom = (term: t, path: path, i: int, scope: array<meta>): option<(t, array<meta>)> =>
+  if i >= Belt.Array.length(path) {
+    Some((term, scope))
+  } else {
+    switch (term, Belt.Array.getExn(path, i)) {
+    | (App({func}), Func) => locateFrom(func, path, i + 1, scope)
+    | (App({arg}), Arg) => locateFrom(arg, path, i + 1, scope)
+    | (Lam({name, body}), Body) => locateFrom(body, path, i + 1, Belt.Array.concat(scope, [name]))
+    | _ => None
+    }
+  }
+let locate = (term, path) => locateFrom(term, path, 0, [])
+
+let rec replaceAtFrom = (term: t, path: path, i: int, replacement: t): t =>
+  if i >= Belt.Array.length(path) {
+    replacement
+  } else {
+    switch (term, Belt.Array.getExn(path, i)) {
+    | (App({func, arg}), Func) => App({func: replaceAtFrom(func, path, i + 1, replacement), arg})
+    | (App({func, arg}), Arg) => App({func, arg: replaceAtFrom(arg, path, i + 1, replacement)})
+    | (Lam({name, body}), Body) => Lam({name, body: replaceAtFrom(body, path, i + 1, replacement)})
+    | _ => term
+    }
+  }
+let replaceAt = (term, path, replacement) => replaceAtFrom(term, path, 0, replacement)
+
+// Recognise App(App(Symbol("="), A), B)
+let asEquation = (t: t): option<(t, t)> =>
+  switch t {
+  | App({func: App({func: Symbol({name: "="}), arg: a}), arg: b}) => Some((a, b))
+  | _ => None
+  }
+  
+let positions = (term: t): array<(path, t, array<string>)> => {
+  let rec go = (term, scope, path) => {
+    let here = (path, term, scope)
+    let children = switch term {
+    | App({func, arg}) =>
+      Array.concat(go(func, scope, Array.concat(path, [Func])), go(arg, scope, Array.concat(path, [Arg])))
+    | Lam({name, body}) => go(body, Array.concat(scope, [name]), Array.concat(path, [Body]))
+    | Symbol(_) | Var(_) | Schematic(_) => []
+    }
+    Array.concat([here], children)
+  }
+  go(term, [], [])
+}  
+
+let prettyPrintStep = (s : step) => switch s {
+  | Func => "F"
+  | Arg => "A"
+  | Body => "B"
+}
+
+let prettyPrintPath = (p : path) => p->Array.map(prettyPrintStep)->Array.join("")
+
+let parsePath = (str:string) => {
+  let re = RegExp.fromStringWithFlags("([FAB]*)", ~flags="y")
+  let toStep = (ch) => 
+    switch ch {
+    | "F" => Func
+    | "A" => Arg
+    | _   => Body    
+    }
+  switch re->RegExp.exec(str) {
+  | Some(res) => {
+      let rest = String.sliceToEnd(str, ~start=RegExp.lastIndex(re))
+      switch RegExp.Result.matches(res) {
+      | [] => ([],str)
+      | [n] => (n->String.split("")->Array.map(toStep),rest)
+      }
+    }    
+  | _ => ([],str)
+  }
+}

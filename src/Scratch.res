@@ -33,10 +33,14 @@ module DerivationsOrLemmasView = MethodView.CombineMethodView(
   SHOTerm,
   SHOTerm,
   MethodView.CombineMethodView(
-    SHOTerm,
-    SHOTerm,
-    MethodView.DerivationView(SHOTerm, SHOTerm),
-    MethodView.LemmaView(SHOTerm, SHOTerm, SHOTermJView),
+    SHOTerm, SHOTerm,
+    SHORewriteView,
+    MethodView.CombineMethodView(
+      SHOTerm,
+      SHOTerm,
+      MethodView.DerivationView(SHOTerm, SHOTerm),
+      MethodView.LemmaView(SHOTerm, SHOTerm, SHOTermJView),
+    )
   ),
   MethodView.EliminationView(SHOTerm, SHOTerm),
 )
