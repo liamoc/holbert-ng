@@ -1,10 +1,10 @@
+module Context = Method.Context(HOTerm,HOTerm)
 module ConstructorDisjointnessView = {
   module Method = HOMethods.ConstructorDisjointness
 
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<string>,
-    assms: array<string>,
+    ctx: Context.t,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
     onChange: (Method.t<'a>, HOTerm.subst) => unit,
@@ -12,8 +12,7 @@ module ConstructorDisjointnessView = {
 
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<string>,
-    "assms": array<string>,
+    "ctx": Context.t,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
@@ -22,7 +21,7 @@ module ConstructorDisjointnessView = {
     props => {
       <div>
         <b> {React.string("disjointness ")} </b>
-        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.assms />
+        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.ctx.localFactNames />
       </div>
     }
 }
@@ -32,8 +31,7 @@ module ConstructorInjectivityView = {
 
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<string>,
-    assms: array<string>,
+    ctx: Context.t,
     ruleStyle: RuleView.style,
     gen: HOTerm.gen,
     onChange: (Method.t<'a>, HOTerm.subst) => unit,
@@ -41,8 +39,7 @@ module ConstructorInjectivityView = {
 
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<string>,
-    "assms": array<string>,
+    "ctx": Context.t,
     "ruleStyle": RuleView.style,
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
@@ -51,12 +48,11 @@ module ConstructorInjectivityView = {
     props => {
       <div>
         <b> {React.string("injectivity ")} </b>
-        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.assms />
+        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.ctx.localFactNames />
         <div className="proof-denest">
         {React.createElement(subRender,{
           "proof": props.method.subgoal,
-          "scope": props.scope,
-          "assms": props.assms,
+          "ctx": props.ctx,
           "ruleStyle": props.ruleStyle,
           "gen": props.gen,
           "onChange": (newa, subst: HOTerm.subst) => 

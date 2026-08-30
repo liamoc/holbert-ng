@@ -79,7 +79,7 @@ module Make = (
       </RuleView>
       <h4> {React.string("Proof")} </h4>
       <ProofView
-        ruleStyle={ruleStyle} scope={[]} assms={[]} proof=checked gen={props.content.gen} onChange=proofChanged
+        ruleStyle={ruleStyle} ctx={ctx} proof=checked gen={props.content.gen} onChange=proofChanged
       />
       {switch props.content.substFailed {
       | Some(msg) => React.string(msg)

@@ -365,3 +365,10 @@ display:block;
 .editable-container {
   display:inline-block;
 }
+
+.floating-delete {
+  float: right;
+  display: block;
+  position: relative;
+  top: 1.6em;
+}

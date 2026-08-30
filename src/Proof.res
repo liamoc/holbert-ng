@@ -25,7 +25,7 @@ module Make = (
     | ProofError({raw: t, rule: Rule.t, msg: string})
   and checked_option_method =
     | Do(Method.t<checked>)
-    | Goal(Term.gen => array<Results.t<Method.t<checked>>>)
+    | Goal
   let parseKeyword = input => {
     Method.keywords
     ->Array.concat(["?"])
@@ -117,7 +117,7 @@ module Make = (
 
       if nAssumptions == nPremises {
         Ok({
-          Context.fixes: rule.vars->Array.concat(ctx.fixes),
+          Context.fixes: prf.fixes->Array.concat(ctx.fixes),
           localFacts: ctx.localFacts->Array.map(r => Rule.upshift(r, rule.vars->Array.length))->Array.concat(rule.premises),
           localFactNames: ctx.localFactNames->Array.concat(prf.assumptions),
           globalFacts: ctx.globalFacts,
@@ -138,6 +138,11 @@ module Make = (
     }
   } //result<Context, string>
 
+  let rec toGoal = (prf: checked) => 
+    switch prf {
+    | ProofError({raw, rule: _, msg: _}) => prf
+    | Checked({fixes,assumptions,method:_,rule}) => Checked({fixes,assumptions,method: Goal, rule})
+    }
   let rec uncheck = (prf: checked) =>
     switch prf {
     | ProofError({raw, rule: _, msg: _}) => raw
@@ -146,7 +151,7 @@ module Make = (
         assumptions,
         method: switch method {
         | Do(m) => Some(m->Method.map(uncheck))
-        | Goal(_) => None
+        | Goal => None
         },
       }
     }
@@ -171,23 +176,7 @@ module Make = (
           rule,
           fixes: prf.fixes,
           assumptions: prf.assumptions,
-          method: Goal(
-            gen => {
-              Method.apply(ctx', rule.conclusion, gen, rl => {
-                check(
-                  ctx',
-                  {
-                    fixes: rl.vars,
-                    method: None,
-                    assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
-                      Int.toString(i + ctx'.localFacts->Array.length)
-                    ),
-                  },
-                  rl,
-                )
-              })
-            },
-          ),
+          method: Goal,
         })
       }
     | Error(e) => ProofError({raw: prf, rule, msg: e})

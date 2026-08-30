@@ -97,8 +97,7 @@ module Make = (
 
   type props = {
     proof: Proof.checked,
-    scope: array<Term.meta>,
-    assms: array<string>,
+    ctx: MethodView.Method.Context.t,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Proof.checked, Term.subst) => unit,
@@ -120,151 +119,157 @@ module Make = (
     }
     switch props.proof {
     | Proof.Checked({fixes, assumptions, method, rule}) => {
-        let scope = Array.concat(fixes, props.scope)
-        let assms = Array.concat(props.assms,assumptions)
-        <div className="proof-step">
-      /*    <div className="icon-tabs">
-            <input type_="radio" id="tab-info" name="box-tabs" checked={true} />
-            <label htmlFor="tab-info" className="tab-icon">{React.string("T")}</label>
-            <input type_="radio" id="tab-settings" name="box-tabs" />
-            <label htmlFor="tab-settings" className="tab-icon">{React.string("X")}</label>
-            <input type_="radio" id="tab-chat" name="box-tabs" />
-            <label htmlFor="tab-chat" className="tab-icon">{React.string("Y")}</label>
-          </div>*/
-          {if fixes->Array.length != 0 {
-              <>            
-              <span className="proof-text"> {React.string("For any ")} </span>
-              <ScopeView scope=fixes editable={Some(fixes' => {
-                 props.onChange(Proof.Checked({fixes:fixes',assumptions,method,rule}), Term.makeSubst())
-                 })} />
-              </>
-          } else {
-            <> </>
-          }}
-          {if assumptions->Array.length != 0 {
-            <>
-              <span className="proof-text">
-                {React.string(
-                  if fixes->Array.length != 0 {
-                    "where:"
-                  } else {
-                    "Assuming:"
-                  },
-                )}
-              </span>
-              <ul
-                className={"proof-assumptions proof-assumptions-"->String.concat(
-                  String.make(props.ruleStyle),
-                )}
-              >
-                { let i = ref(0);
-                  Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
-                    i := i.contents + 1;
-                    let handleChange = s => {
-                      switch Rule.parseRuleName(String.trim(s)) {
-                        | Ok((_,"")) => {
-                          props.onChange(
-                            Proof.Checked({
-                              fixes,
-                              assumptions:Util.updateAtIndex(assumptions,i.contents-1,s),
-                              method,
-                              rule
-                            }), Term.makeSubst())
-                            Ok(())
-                          }
-                        | Error(e) => Error(e)
-                        }
-                      }
-                    <li key={Int.toString(i.contents-1)}>
-                      <RuleView rule=r style=props.ruleStyle scope>
-                      <UIWidgets.EditableLabel label=n onConfirm={handleChange} />
-                      </RuleView>
-                    </li>
-                })->React.array}
-              </ul>
-            </>
-          } else {
-            <> </>
-          }}
-          <div className="proof-show">
-            <span className="proof-text"> {React.string("Show: ")} </span>
-            <span className="proof-judgement">
-              <JudgmentView judgment={rule.conclusion} scope />
-            </span>
-            {switch method {
-            | Goal(options) =>
-              let portal = switch sidebarRef.current->Nullable.toOption {
-              | None => React.null
-              | Some(node) =>
-                let res = options(props.gen)
-                Portal.createPortal(
-                  <>
-                    {<ResultsView
-                      initialNodes=res
-                      onBlur
-                      onApply={(opt, subst) =>
-                        props.onChange(
-                          Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
-                          subst,
-                        )}
-                    >
-                    </ResultsView>}
-                  </>,
-                  node,
-                )
-              }
-              <div
-                className="proof-goal"
-                tabIndex=0
-                onBlur
-                onFocus={e => {
-                  setFocused(_ => true)
-                  ReactEvent.Focus.stopPropagation(e)
-                }}
-              >
-                {if isFocused {
-                  <>
-                    <span className="button-icon button-icon-blue typcn typcn-location" />
-                    {portal}
-                  </>
-                } else {
-                  <span className="button-icon button-icon-blue typcn typcn-location-outline" />
-                }}
-              </div>
-            | Do(method) =>
-              <>
-              <span className="button-icon button-icon-red typcn typcn-trash"  />
-              {
-                React.createElement(
-                  MethodView.make(p =>
-                    make({
-                      proof: p["proof"],
-                      scope: p["scope"],
-                      assms: p["assms"],
-                      ruleStyle: p["ruleStyle"],
-                      gen: p["gen"],
-                      onChange: p["onChange"],
-                    })
-                  ),
-                  {
-                    method,
-                    scope,
-                    assms,
-                    ruleStyle: props.ruleStyle,
-                    gen: props.gen,
-                    onChange: (newm, subst) => {
-                      props.onChange(
-                        Proof.Checked({fixes, assumptions, method: Do(newm), rule}),
-                        subst,
-                      )
-                    },
-                  },
-                )
-              }              
-              </>
+        switch Proof.enter(props.ctx, {fixes, assumptions, method: None}, rule) {
+        | Error(_) => <div className="error"> {React.string("context mismatch")} </div>
+        | Ok(ctx) =>
+          <div className="proof-step">
+            {if fixes->Array.length != 0 {
+                <>            
+                <span className="proof-text"> {React.string("For any ")} </span>
+                <ScopeView scope=fixes editable={Some(fixes' => {
+                   props.onChange(Proof.Checked({fixes:fixes',assumptions,method,rule}), Term.makeSubst())
+                   })} />
+                </>
+            } else {
+              <> </>
             }}
+            {if assumptions->Array.length != 0 {
+              <>
+                <span className="proof-text">
+                  {React.string(
+                    if fixes->Array.length != 0 {
+                      "where:"
+                    } else {
+                      "Assuming:"
+                    },
+                  )}
+                </span>
+                <ul
+                  className={"proof-assumptions proof-assumptions-"->String.concat(
+                    String.make(props.ruleStyle),
+                  )}
+                >
+                  { let i = ref(0);
+                    Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
+                      i := i.contents + 1;
+                      let handleChange = s => {
+                        switch Rule.parseRuleName(String.trim(s)) {
+                          | Ok((_,"")) => {
+                            props.onChange(
+                              Proof.Checked({
+                                fixes,
+                                assumptions:Util.updateAtIndex(assumptions,i.contents-1,s),
+                                method,
+                                rule
+                              }), Term.makeSubst())
+                              Ok(())
+                            }
+                          | Error(e) => Error(e)
+                          }
+                        }
+                      <li key={Int.toString(i.contents-1)}>
+                        <RuleView rule=r style=props.ruleStyle scope={ctx.fixes}>
+                        <UIWidgets.EditableLabel label=n onConfirm={handleChange} />
+                        </RuleView>
+                      </li>
+                  })->React.array}
+                </ul>
+              </>
+            } else {
+              <> </>
+            }}
+            <div className="proof-show">
+              <span className="proof-text"> {React.string("Show: ")} </span>
+              <span className="proof-judgement">
+                <JudgmentView judgment={rule.conclusion} scope={ctx.fixes} />
+              </span>
+              {switch method {
+              | Goal =>
+                let portal = switch sidebarRef.current->Nullable.toOption {
+                | None => React.null
+                | Some(node) =>
+                  let res = MethodView.Method.apply(ctx, rule.conclusion, props.gen, rl => {
+                    Proof.check(
+                      ctx,
+                      {
+                        fixes: rl.vars,
+                        method: None,
+                        assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
+                          Int.toString(i + ctx.localFacts->Array.length)
+                        ),
+                      },
+                      rl,
+                    )
+                  })
+                  Portal.createPortal(
+                    <>
+                      {<ResultsView
+                        initialNodes=res
+                        onBlur
+                        onApply={(opt, subst) =>
+                          props.onChange(
+                            Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
+                            subst,
+                          )}
+                      >
+                      </ResultsView>}
+                    </>,
+                    node,
+                  )
+                }
+                <div
+                  className="proof-goal"
+                  tabIndex=0
+                  onBlur
+                  onFocus={e => {
+                    setFocused(_ => true)
+                    ReactEvent.Focus.stopPropagation(e)
+                  }}
+                >
+                  {if isFocused {
+                    <>
+                      <span className="button-icon button-icon-blue typcn typcn-location" />
+                      {portal}
+                    </>
+                  } else {
+                    <span className="button-icon button-icon-blue typcn typcn-location-outline" />
+                  }}
+                </div>
+              | Do(method) =>
+                <>
+                <span className="button-icon button-icon-red typcn typcn-trash floating-delete" onClick={ e=> {
+                  props.onChange(Proof.toGoal(props.proof), Term.makeSubst()) }
+                  } />
+                {
+                  React.createElement(
+                    MethodView.make(p =>
+                      make({
+                        proof: p["proof"],
+                        ctx: p["ctx"],
+                        ruleStyle: p["ruleStyle"],
+                        gen: p["gen"],
+                        onChange: p["onChange"],
+                      })
+                    ),
+                    {
+                      method,
+                      ctx,
+                      ruleStyle: props.ruleStyle,
+                      gen: props.gen,
+                      onChange: (newm, subst) => {
+                        props.onChange(
+                          Proof.Checked({fixes, assumptions, method: Do(newm), rule}),
+                          subst,
+                        )
+                      },
+                    },
+                  )
+                }              
+                </>
+              }}
+            </div>
           </div>
-        </div>
+        }
       }
     | Proof.ProofError({raw: _, rule: _, msg}) => <div className="error"> {React.string(msg)} </div>
     }

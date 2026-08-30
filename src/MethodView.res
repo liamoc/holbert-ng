@@ -6,16 +6,14 @@ module type METHOD_VIEW = {
   module Method: PROOF_METHOD with module Term := Term and module Judgment := Judgment
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<Term.meta>,
-    assms: array<string>,
+    ctx:Method.Context.t,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<Term.meta>,
-    "assms": array<string>,
+    "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
@@ -67,16 +65,14 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
   module Method = Derivation(Term, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<Term.meta>,
-    assms: array<string>,
+    ctx: Method.Context.t,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<Term.meta>,
-    "assms": array<string>,
+    "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
@@ -85,7 +81,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     props => {
       <div>
         <b> {React.string("by ")} </b>
-        <RuleRefView ruleRef=props.method.ruleName assms=props.assms />
+        <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
         <ul className="subgoals">
           {props.method.subgoals
           ->Array.mapWithIndex((sg, i) => {
@@ -94,8 +90,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
                 subRender,
                 {
                   "proof": sg,
-                  "scope": props.scope,
-                  "assms": props.assms,
+                  "ctx": props.ctx,
                   "ruleStyle": props.ruleStyle,
                   "gen": props.gen,
                   "onChange": (newa, subst: Term.subst) =>
@@ -114,37 +109,32 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
   module Method = Elimination(Term, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<Term.meta>,
-    assms: array<string>,
+    ctx: Method.Context.t,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<Term.meta>,
-    "assms": array<string>,
+    "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let make = (subRender: srProps<'a> => React.element) =>
-    props => {
+  let make = (subRender: srProps<'a> => React.element) => props => {
       <div>
         <b> {React.string("elim ")} </b>
-        <RuleRefView ruleRef=props.method.ruleName assms=props.assms />
+        <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
         <span className="spacer">{React.string(" ")}</span>
-        <RuleRefView ruleRef=props.method.elimName assms=props.assms />
+        <RuleRefView ruleRef=props.method.elimName assms=props.ctx.localFactNames />
         <ul className="subgoals">
-          {props.method.subgoals
-          ->Array.mapWithIndex((sg, i) => {
+          {props.method.subgoals->Array.mapWithIndex((sg, i) => {
             <li key={String.make(i)}>
               {React.createElement(
                 subRender,
                 {
                   "proof": sg,
-                  "scope": props.scope,
-                  "assms": props.assms,
+                  "ctx": props.ctx,
                   "ruleStyle": props.ruleStyle,
                   "gen": props.gen,
                   "onChange": (newa, subst: Term.subst) =>
@@ -167,16 +157,14 @@ module LemmaView = (
   module Method = Lemma(Term, Judgment)
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<Term.meta>,
-    assms: array<string>,
+    ctx: Method.Context.t,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<Term.meta>,
-    "assms": array<string>,
+    "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
@@ -186,15 +174,14 @@ module LemmaView = (
     props => {
       <div>
         <b> {React.string("have ")} </b>
-        <RuleView rule={props.method.rule} scope={props.scope} style={props.ruleStyle}>
+        <RuleView rule={props.method.rule} scope={props.ctx.fixes} style={props.ruleStyle}>
           {React.null}
         </RuleView>
         {React.createElement(
           subRender,
           {
             "proof": props.method.proof,
-            "scope": props.scope,
-            "assms": props.assms,
+            "ctx": props.ctx,
             "ruleStyle": props.ruleStyle,
             "gen": props.gen,
             "onChange": (proof, subst) => {props.onChange({...props.method, proof}, subst)},
@@ -204,8 +191,7 @@ module LemmaView = (
           subRender,
           {
             "proof": props.method.show,
-            "scope": props.scope,
-            "assms": props.assms,
+            "ctx": props.ctx,
             "ruleStyle": props.ruleStyle,
             "gen": props.gen,
             "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
@@ -227,8 +213,7 @@ module CombineMethodView = (
   module Method = Combine(Term, Judgment, Method1View.Method, Method2View.Method)
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<Term.meta>,
-    assms: array<string>,  
+    ctx: Method.Context.t, 
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
@@ -240,8 +225,7 @@ module CombineMethodView = (
       | First(m) =>
         Method1View.make(subrender)({
           method: m,
-          scope: props.scope,
-          assms: props.assms,
+          ctx: props.ctx,
           ruleStyle: props.ruleStyle,
           gen: props.gen,
           onChange: (n, s) => props.onChange(First(n), s),
@@ -249,8 +233,7 @@ module CombineMethodView = (
       | Second(m) =>
         Method2View.make(subrender)({
           method: m,
-          scope: props.scope,
-          assms: props.assms,          
+          ctx: props.ctx,
           ruleStyle: props.ruleStyle,
           gen: props.gen,
           onChange: (n, s) => props.onChange(Second(n), s),

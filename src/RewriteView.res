@@ -1,11 +1,11 @@
 open Signatures
 module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Term) => {
+  module Context = Method.Context(Term, Judgment)
   module Method = Rewrite.Make(Term, Judgment)
 
   type props<'a> = {
     method: Method.t<'a>,
-    scope: array<Term.meta>,
-    assms: array<string>,
+    ctx: Context.t,
     ruleStyle: RuleView.style,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
@@ -13,8 +13,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
   type srProps<'a> = {
     "proof": 'a,
-    "scope": array<Term.meta>,
-    "assms": array<string>,
+    "ctx": Context.t,
     "ruleStyle": RuleView.style,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
@@ -23,7 +22,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     props => {
       <div>
         <b> {React.string("rewrite ")} </b>
-        <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.assms />
+        <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
         {
           if props.method.subgoals->Array.length > 0 { 
             <ul className="subgoals">
@@ -34,8 +33,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                   subRender,
                   {
                     "proof": sg,
-                    "scope": props.scope,
-                    "assms": props.assms,
+                    "ctx": props.ctx,
                     "ruleStyle": props.ruleStyle,
                     "gen": props.gen,
                     "onChange": (newa, subst: Term.subst) =>
@@ -53,8 +51,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
         <div className="proof-denest">
         {React.createElement(subRender,{
           "proof": props.method.newGoal,
-          "scope": props.scope,
-          "assms": props.assms,
+          "ctx": props.ctx,
           "ruleStyle": props.ruleStyle,
           "gen": props.gen,
           "onChange": (newa, subst: Term.subst) => 
