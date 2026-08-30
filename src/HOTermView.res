@@ -24,12 +24,21 @@ let viewVar = (props: idx_props) =>
       </span>
     }    
   }
-
 let makeMeta = (str: string) =>
   <span className="rule-binder">
     {React.string(str)}
     {React.string(".")}
   </span>
+let makeEditableMeta = (str: string,~onChange: string => unit ) => {
+  let handleConfirm = s => switch HOTerm.parseMeta(String.trim(s)->String.concat(".")) {
+    | Ok((s',"")) => {onChange(s'); Ok(())}
+    | Error(e) => Error(e)
+    }
+  <span className="rule-binder">
+    <UIWidgets.EditableLabel label={str} onConfirm={handleConfirm} />
+    {React.string(".")}
+  </span>  
+}
 let makeLocalBinder = (str: string) =>
   <span className="term-binder">
     {React.string(str)}

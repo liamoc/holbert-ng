@@ -28,7 +28,7 @@ module Make = (
         } else {
           React.string("")
         }}
-        <ScopeView scope=vars />
+        <ScopeView scope=vars editable=None />
         {React.array(
           premises
           ->Array.mapWithIndex((p, i) =>
@@ -77,7 +77,7 @@ module Make = (
           <tbody>
             <tr>
               <td className="rule-cell rule-binderbox" rowSpan=3>
-                <ScopeView scope=vars />
+                <ScopeView scope=vars editable=None />
               </td>
               {React.array(
                 premises->Array.mapWithIndex((p, i) =>
@@ -118,7 +118,7 @@ module Make = (
           <tbody>
             <tr>
               <td className="rule-cell rule-binderbox" rowSpan=2>
-                <ScopeView scope=vars />
+                <ScopeView scope=vars editable=None />
               </td>
               {if premises->Array.length == 0 {
                 <td className="rule-cell rule-spacer" />

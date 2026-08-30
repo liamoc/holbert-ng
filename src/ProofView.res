@@ -134,7 +134,9 @@ module Make = (
           {if fixes->Array.length != 0 {
               <>            
               <span className="proof-text"> {React.string("For any ")} </span>
-              <ScopeView scope=fixes />
+              <ScopeView scope=fixes editable={Some(fixes' => {
+                 props.onChange(Proof.Checked({fixes:fixes',assumptions,method,rule}), Term.makeSubst())
+                 })} />
               </>
           } else {
             <> </>
@@ -155,10 +157,29 @@ module Make = (
                   String.make(props.ruleStyle),
                 )}
               >
-                {Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
-                  <li key={n}>
-                    <RuleView rule=r style=props.ruleStyle scope> {React.string(n)} </RuleView>
-                  </li>
+                { let i = ref(0);
+                  Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
+                    i := i.contents + 1;
+                    let handleChange = s => {
+                      switch Rule.parseRuleName(String.trim(s)) {
+                        | Ok((_,"")) => {
+                          props.onChange(
+                            Proof.Checked({
+                              fixes,
+                              assumptions:Util.updateAtIndex(assumptions,i.contents-1,s),
+                              method,
+                              rule
+                            }), Term.makeSubst())
+                            Ok(())
+                          }
+                        | Error(e) => Error(e)
+                        }
+                      }
+                    <li key={Int.toString(i.contents-1)}>
+                      <RuleView rule=r style=props.ruleStyle scope>
+                      <UIWidgets.EditableLabel label=n onConfirm={handleChange} />
+                      </RuleView>
+                    </li>
                 })->React.array}
               </ul>
             </>
@@ -211,31 +232,36 @@ module Make = (
                 }}
               </div>
             | Do(method) =>
-              React.createElement(
-                MethodView.make(p =>
-                  make({
-                    proof: p["proof"],
-                    scope: p["scope"],
-                    assms: p["assms"],
-                    ruleStyle: p["ruleStyle"],
-                    gen: p["gen"],
-                    onChange: p["onChange"],
-                  })
-                ),
-                {
-                  method,
-                  scope,
-                  assms,
-                  ruleStyle: props.ruleStyle,
-                  gen: props.gen,
-                  onChange: (newm, subst) => {
-                    props.onChange(
-                      Proof.Checked({fixes, assumptions, method: Do(newm), rule}),
-                      subst,
-                    )
+              <>
+              <span className="button-icon button-icon-red typcn typcn-trash"  />
+              {
+                React.createElement(
+                  MethodView.make(p =>
+                    make({
+                      proof: p["proof"],
+                      scope: p["scope"],
+                      assms: p["assms"],
+                      ruleStyle: p["ruleStyle"],
+                      gen: p["gen"],
+                      onChange: p["onChange"],
+                    })
+                  ),
+                  {
+                    method,
+                    scope,
+                    assms,
+                    ruleStyle: props.ruleStyle,
+                    gen: props.gen,
+                    onChange: (newm, subst) => {
+                      props.onChange(
+                        Proof.Checked({fixes, assumptions, method: Do(newm), rule}),
+                        subst,
+                      )
+                    },
                   },
-                },
-              )
+                )
+              }              
+              </>
             }}
           </div>
         </div>

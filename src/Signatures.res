@@ -61,6 +61,8 @@ module type TERM_VIEW = {
   type props = {term: Term.t, scope: array<Term.meta>}
   let make: props => React.element
   let makeMeta: Term.meta => React.element
+  let makeEditableMeta: (Term.meta, ~onChange: Term.meta => unit) => React.element
+  
 }
 
 module type JUDGMENT_VIEW = {

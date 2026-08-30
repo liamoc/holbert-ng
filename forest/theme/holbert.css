@@ -83,6 +83,9 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
   white-space:normal;
   line-height:1.00;
 }
+.inline-rule > span > div {
+  display:inline-block;
+}
 .axiom-set-Linear > .inline-rule {
   display:block;
   margin-top:5px;
@@ -187,6 +190,10 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 .rule-rulename-defined {
     font-family: "Neo Euler Medium";
     font-size: small;
+}
+.rule-rulename-defined > div > input {
+  font-family: "Neo Euler Medium";
+  font-size: small;
 }
 .rule-rulename-cases {
     font-family: "Neo Euler Medium";
@@ -332,46 +339,29 @@ display:block;
     position:relative;
     box-sizing: border-box;
 }
-.icon-tabs {
+.error-box {
   position: absolute;
-  top: 0;
-  right: 0;
-  display: flex;
+  background: rgb(255, 228, 228);
+  color:black;
+  padding-left: 4px;
+  padding-right: 4px;
+  border: 1px solid rgba(1, 1, 1, 0.2);
+  border-radius: 3px;
+  font-family: 'Inria Sans';
+}
+.auto-input {
+  min-width: 15px;
+  field-sizing: content;
 }
 
-/* 3. Hide the actual radio circles completely */
-.icon-tabs input[type="radio"] {
-  display: none;
-}
-
-/* 4. Style the labels to look like tabs */
-.tab-icon {
-  background-color: #e0e0e0; /* Unselected background color */
-  border-left: 2px solid #ccc;
-  border-bottom: 2px solid #ccc;
-  padding: 10px 14px;
+.label-span {
   cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none; /* Prevents double-click text selection */
+  padding: 2px 0px;
 }
 
-/* Fix borders and corners */
-.icon-tabs input[type="radio"]:first-of-type + .tab-icon {
-  border-left: none;
+.label-span:hover {
+  background-color: var(--editable-hover-col);
 }
-.icon-tabs input[type="radio"]:last-of-type + .tab-icon {
-  border-radius: 0 6px 0 0;
-}
-
-/* 5. Hover State for unselected tabs */
-.tab-icon:hover {
-  background-color: #d5d5d5;
-}
-
-/* 6. Pure CSS "Selected" Radio State */
-/* When the radio is checked, style the label right next to it (+) */
-.icon-tabs input[type="radio"]:checked + .tab-icon {
-  background-color: #f4f4f9; /* Matches the main box background */
-  border-bottom-color: transparent; /* Makes it look connected to the box */
-  font-weight: bold;
+.editable-container {
+  display:inline-block;
 }

@@ -26,7 +26,16 @@ module Make = (
       {React.string(str)}
       {React.string(".")}
     </span>
-
+  let makeEditableMeta = (str: string,~onChange: string => unit ) => {
+    let handleConfirm = s => switch SExp.parseMeta(String.trim(s)) {
+      | Ok((s',"")) => {onChange(s'); Ok(())}
+      | Error(e) => Error(e)
+      }
+    <span className="rule-binder">
+      <UIWidgets.EditableLabel label={str} onConfirm={handleConfirm} />
+      {React.string(".")}
+    </span>  
+  }
   let parenthesise = f =>
     [
       <span className="symbol" key={"-1"}> {React.string("(")} </span>,

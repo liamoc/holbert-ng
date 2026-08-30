@@ -136,6 +136,10 @@ let intersperse = (a: array<'a>, ~with: 'a) =>
       [with, e]
     }
   )
+  
+let updateAtIndex = (arr: array<'a>, targetIdx: int, newValue: 'a): array<'a> => {
+  arr->Array.toSpliced(~start=targetIdx, ~remove=1, ~insert=[newValue])
+}
 
 exception Unreachable(string)
 exception Err(string)
