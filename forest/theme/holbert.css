@@ -365,7 +365,31 @@ display:block;
 .editable-container {
   display:inline-block;
 }
-
+.display-tab-left {
+  border-bottom-left-radius: 4px;
+}
+.display-tab-right {
+  border-right: 1px solid rgb(1, 1, 1, 0.2);
+  border-bottom-right-radius: 4px;
+}
+.display-tab {
+  float: right;
+  background: white;
+  border-left: 1px solid rgb(1, 1, 1, 0.2);
+  border-bottom: 1px solid rgb(1, 1, 1, 0.2);
+  padding-left: 2px;
+  padding-bottom: 2px;
+  line-height: 1;
+  padding-right: 2px;
+  cursor:pointer;
+}
+.display-tab:hover {
+  background: #acacfc;
+}
+.display-tab-selected {
+  background: #4c4c98 !important;
+  color:white;
+}
 .floating-delete {
   float: right;
   display: block;

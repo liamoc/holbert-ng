@@ -9,10 +9,14 @@ module Make = (
   module Rule = Rule.Make(Term, Judgment)
   module Context = Context(Term, Judgment)
   module Results = MethodResults(Term)
+  
+  type display = Full | Tree | Summary
+  
   type rec t = {
     fixes: array<Term.meta>,
     assumptions: array<string>,
     method: option<Method.t<t>>,
+    display: display
   }
 
   type rec checked =
@@ -21,6 +25,7 @@ module Make = (
         assumptions: array<string>,
         method: checked_option_method,
         rule: Rule.t,
+        display: display
       })
     | ProofError({raw: t, rule: Rule.t, msg: string})
   and checked_option_method =
@@ -34,6 +39,7 @@ module Make = (
   let rec substitute = (prf: t, subst: Term.subst) => {
     fixes: prf.fixes,
     assumptions: prf.assumptions,
+    display: prf.display,
     method: prf.method->Option.map(m =>
       m->Method.substitute(subst)->Method.map(m => m->substitute(subst))
     ),
@@ -50,6 +56,11 @@ module Make = (
         ~subprinter=prettyPrint,
       )
     }
+    let turnstile = switch (prf.display) {
+      | Full => "|-"
+      | Tree => "|:"
+      | Summary => "|."
+      }
     let displayFixes = [...prf.fixes]
     Array.reverse(displayFixes)
     String.padStart("", indentation, " ")
@@ -60,9 +71,9 @@ module Make = (
     )
     ->String.concat(
       if Array.length(prf.assumptions) == 0 {
-        "|- "
+        `${turnstile} `
       } else {
-        " |- "
+        ` ${turnstile} `
       },
     )
     ->String.concat(mtd)
@@ -89,20 +100,26 @@ module Make = (
       cur := String.trim(r)
       assumptions->Array.push(a)
     }
-    if cur.contents->String.slice(~start=0, ~end=2) != "|-" {
+    let turnstile = cur.contents->String.slice(~start=0, ~end=2);
+    if  turnstile != "|-" && turnstile != "|:" && turnstile != "|." {
       Console.log((fixes, assumptions))
       Error("expected turnstile or rule name"->String.concat(cur.contents))
     } else {
+      let display = switch turnstile {
+      | "|:" => Tree
+      | "|." => Summary
+      | _ => Full
+      };
       cur := cur.contents->String.trim->String.sliceToEnd(~start=2)->String.trim
       let scope' = Array.concat(fixes, scope)
       let assms' = Array.concat(assms, assumptions)
       switch parseKeyword(cur.contents) {
       | Some("?") =>
-        Ok(({fixes, assumptions, method: None}, cur.contents->String.sliceToEnd(~start=1)))
+        Ok(({fixes, assumptions, method: None, display}, cur.contents->String.sliceToEnd(~start=1)))
       | Some(keyword) => {
           cur := cur.contents->String.sliceToEnd(~start=String.length(keyword))
           switch Method.parse(cur.contents, ~keyword, ~scope=scope', ~assms=assms', ~gen, ~subparser=parse) {
-          | Ok((method, r)) => Ok(({fixes, assumptions, method: Some(method)}, r))
+          | Ok((method, r)) => Ok(({fixes, assumptions, method: Some(method), display}, r))
           | Error(e) => Error(e)
           }
         }
@@ -141,14 +158,15 @@ module Make = (
   let rec toGoal = (prf: checked) => 
     switch prf {
     | ProofError({raw, rule: _, msg: _}) => prf
-    | Checked({fixes,assumptions,method:_,rule}) => Checked({fixes,assumptions,method: Goal, rule})
+    | Checked({fixes,assumptions,method:_,rule, display}) => Checked({fixes,assumptions,method: Goal, rule, display})
     }
   let rec uncheck = (prf: checked) =>
     switch prf {
     | ProofError({raw, rule: _, msg: _}) => raw
-    | Checked({fixes, assumptions, method, rule: _}) => {
+    | Checked({fixes, assumptions, method, rule: _, display}) => {
         fixes,
         assumptions,
+        display,
         method: switch method {
         | Do(m) => Some(m->Method.map(uncheck))
         | Goal => None
@@ -168,6 +186,7 @@ module Make = (
             fixes: prf.fixes,
             assumptions: prf.assumptions,
             method: Do(m'),
+            display: prf.display,
           })
         | Error(e) => ProofError({raw: prf, rule, msg: e})
         }
@@ -177,6 +196,7 @@ module Make = (
           fixes: prf.fixes,
           assumptions: prf.assumptions,
           method: Goal,
+          display: prf.display,
         })
       }
     | Error(e) => ProofError({raw: prf, rule, msg: e})

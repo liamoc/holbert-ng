@@ -118,16 +118,26 @@ module Make = (
       }
     }
     switch props.proof {
-    | Proof.Checked({fixes, assumptions, method, rule}) => {
-        switch Proof.enter(props.ctx, {fixes, assumptions, method: None}, rule) {
+    | Proof.Checked({fixes, assumptions, method, rule, display}) => {
+        let changeDisplay = d => props.onChange(Proof.Checked({fixes,assumptions,method,rule,display:d}), Term.makeSubst())
+        switch Proof.enter(props.ctx, {fixes, assumptions, method: None, display}, rule) {
         | Error(_) => <div className="error"> {React.string("context mismatch")} </div>
         | Ok(ctx) =>
           <div className="proof-step">
+          <div className=`display-tab display-tab-right 
+            ${display == Full ? "display-tab-selected" : ""}` onClick={e => changeDisplay(Full)}>
+            <span className="typcn typcn-arrow-maximise" /></div>
+          <div className=`display-tab 
+            ${display == Tree ? "display-tab-selected" : ""}` onClick={e => changeDisplay(Tree)}>
+            <span className="typcn typcn-tree" /></div>
+          <div className=`display-tab display-tab-left 
+            ${display == Summary ? "display-tab-selected" : ""}` onClick={e => changeDisplay(Summary)}>
+            <span className="typcn typcn-arrow-minimise" /></div>          
             {if fixes->Array.length != 0 {
                 <>            
                 <span className="proof-text"> {React.string("For any ")} </span>
                 <ScopeView scope=fixes editable={Some(fixes' => {
-                   props.onChange(Proof.Checked({fixes:fixes',assumptions,method,rule}), Term.makeSubst())
+                   props.onChange(Proof.Checked({fixes:fixes',assumptions,method,rule,display}), Term.makeSubst())
                    })} />
                 </>
             } else {
@@ -160,7 +170,8 @@ module Make = (
                                 fixes,
                                 assumptions:Util.updateAtIndex(assumptions,i.contents-1,s),
                                 method,
-                                rule
+                                rule, 
+                                display
                               }), Term.makeSubst())
                               Ok(())
                             }
@@ -197,6 +208,7 @@ module Make = (
                         assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
                           Int.toString(i + ctx.localFacts->Array.length)
                         ),
+                        display
                       },
                       rl,
                     )
@@ -208,7 +220,7 @@ module Make = (
                         onBlur
                         onApply={(opt, subst) =>
                           props.onChange(
-                            Proof.Checked({fixes, assumptions, method: Do(opt), rule}),
+                            Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}),
                             subst,
                           )}
                       >
@@ -258,7 +270,7 @@ module Make = (
                       gen: props.gen,
                       onChange: (newm, subst) => {
                         props.onChange(
-                          Proof.Checked({fixes, assumptions, method: Do(newm), rule}),
+                          Proof.Checked({fixes, assumptions, method: Do(newm), rule, display}),
                           subst,
                         )
                       },
