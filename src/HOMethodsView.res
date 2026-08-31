@@ -6,6 +6,7 @@ module ConstructorDisjointnessView = {
     method: Method.t<'a>,
     ctx: Context.t,
     ruleStyle: RuleView.style,
+    grammar: HOTerm.grammar,    
     gen: HOTerm.gen,
     onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
@@ -14,10 +15,11 @@ module ConstructorDisjointnessView = {
     "proof": 'a,
     "ctx": Context.t,
     "ruleStyle": RuleView.style,
+    "grammar": HOTerm.grammar,    
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
   }
-  let make = (subRender: srProps<'a> => React.element) =>
+  let make = (_subRender: srProps<'a> => React.element) =>
     props => {
       <div>
         <b> {React.string("disjointness ")} </b>
@@ -33,6 +35,7 @@ module ConstructorInjectivityView = {
     method: Method.t<'a>,
     ctx: Context.t,
     ruleStyle: RuleView.style,
+    grammar: HOTerm.grammar,
     gen: HOTerm.gen,
     onChange: (Method.t<'a>, HOTerm.subst) => unit,
   }
@@ -41,6 +44,7 @@ module ConstructorInjectivityView = {
     "proof": 'a,
     "ctx": Context.t,
     "ruleStyle": RuleView.style,
+    "grammar": HOTerm.grammar,
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
   }
@@ -54,6 +58,7 @@ module ConstructorInjectivityView = {
           "proof": props.method.subgoal,
           "ctx": props.ctx,
           "ruleStyle": props.ruleStyle,
+          "grammar": props.grammar,
           "gen": props.gen,
           "onChange": (newa, subst: HOTerm.subst) => 
             props.onChange(props.method->Method.updateGoal(_=>newa), subst), 

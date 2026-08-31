@@ -18,6 +18,12 @@
   }
 }
 
+\def\notation[id][deps][body]{
+  \<html:hol-notation>[id]{\local{\id}}[deps]{\deps}{
+    \body
+  }
+}
+
 \def\induct[id][deps][body]{
   \<html:hol-inductive>[id]{\local{\id}}[deps]{\deps}{
     \body

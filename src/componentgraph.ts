@@ -187,8 +187,8 @@ export function setup(
 					.split(/\s+/)
 					.filter(Boolean);
         deps = [...new Set(deps)];
-				let original_str = this.innerHTML;
-				let text = window.localStorage.getItem(id) ?? this.innerHTML;
+				let original_str = this.textContent;
+				let text = window.localStorage.getItem(id) ?? this.textContent;
 				this.innerHTML = "loading";
 				if (this.id in database) {
 					this.innerHTML = "duplicate element"

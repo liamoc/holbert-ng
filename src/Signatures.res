@@ -7,7 +7,7 @@ module type TERM = {
   let mapSubst: (subst, t => t) => subst
   let mergeSubsts: (subst, subst) => subst
   let substEqual: (subst, subst) => bool
-  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
+//  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
   let substitute: (t, subst) => t
   let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
   let makeSubst: unit => subst
@@ -19,10 +19,14 @@ module type TERM = {
   let fresh: (gen, ~replacing: meta=?) => schematic
   let seen: (gen, schematic) => unit
   let place: (schematic, ~scope: array<meta>) => t
-  let makeGen: unit => gen
-  let parse: (string, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), string>
+  let makeGen: unit => gen  
+  type grammar
+  let emptyGrammar : grammar
+  let combineGrammars : (grammar, grammar) => grammar
+  let parse: (string, ~grammar: grammar, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), string>
+  let prettyPrint: (t, ~grammar: grammar, ~scope: array<meta>) => string
+  
   let parseMeta: string => result<(meta, string), string>
-  let prettyPrint: (t, ~scope: array<meta>) => string
   let prettyPrintMeta: meta => string
   // will unifying t with a term give meaningful substitutions?
   let concrete: t => bool
@@ -39,8 +43,8 @@ module type JUDGMENT = {
   let upshift: (t, int, ~from: int=?) => t
   // Map a function over all terms in the judgment
   let mapTerms: (t, Term.t => Term.t) => t
-  let parse: (string, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
-  let prettyPrint: (t, ~scope: array<Term.meta>) => string
+  let parse: (string, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~gen: Term.gen=?) => result<(t, string), string>
+  let prettyPrint: (t, ~grammar: Term.grammar, ~scope: array<Term.meta>) => string
   let concrete: t => bool
 }
 
@@ -58,7 +62,7 @@ module type REWRITABLE_JUDGMENT = {
 
 module type TERM_VIEW = {
   module Term: TERM
-  type props = {term: Term.t, scope: array<Term.meta>}
+  type props = {term: Term.t, grammar: Term.grammar, scope: array<Term.meta>}
   let make: props => React.element
   let makeMeta: Term.meta => React.element
   let makeEditableMeta: (Term.meta, ~onChange: Term.meta => unit) => React.element
@@ -69,6 +73,6 @@ module type JUDGMENT_VIEW = {
   module Term: TERM
   module Judgment: JUDGMENT with module Term := Term
   module TermView: TERM_VIEW with module Term := Term
-  type props = {judgment: Judgment.t, scope: array<Term.meta>}
+  type props = {judgment: Judgment.t, grammar: Term.grammar, scope: array<Term.meta>}
   let make: props => React.element
 }

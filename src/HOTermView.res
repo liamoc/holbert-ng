@@ -1,29 +1,4 @@
-open Util
 
-type idx_props = {idx: int, scope: array<string>, local_scope: array<string>}
-let viewVar = (props: idx_props) =>
-  if props.idx < Array.length(props.local_scope) {
-    switch props.local_scope[props.idx] {
-    | Some(n) if Array.indexOf(props.local_scope, n) == props.idx =>
-      <span className="term-boundvar"> {React.string(n)} </span>
-    | _ =>
-      <span className="term-boundvar-unnamed">
-        {React.string("\\")}
-        {React.int(props.idx)}
-      </span>
-    }    
-  } else {
-    let idx2 = props.idx - Array.length(props.local_scope) 
-    switch props.scope[idx2] {
-    | Some(n) if Array.indexOf(props.scope, n) == idx2 =>
-      <span className="term-metavar"> {React.string(n)} </span>
-    | _ =>
-      <span className="term-metavar-unnamed">
-        {React.string("\\")}
-        {React.int(props.idx)}
-      </span>
-    }    
-  }
 let makeMeta = (str: string) =>
   <span className="rule-binder">
     {React.string(str)}
@@ -33,76 +8,57 @@ let makeEditableMeta = (str: string,~onChange: string => unit ) => {
   let handleConfirm = s => switch HOTerm.parseMeta(String.trim(s)->String.concat(".")) {
     | Ok((s',"")) => {onChange(s'); Ok(())}
     | Error(e) => Error(e)
+    | Ok((_,rest)) => Error("trailing string after meta name: "->String.concat(rest))
     }
   <span className="rule-binder">
     <UIWidgets.EditableLabel label={str} onConfirm={handleConfirm} />
     {React.string(".")}
   </span>  
 }
-let makeLocalBinder = (str: string) =>
-  <span className="term-binder">
-    {React.string(str)}
-    {React.string(".")}
-  </span>
 
-let parenthesise = f =>
-  [
-    <span className="symbol" key={"-1"}> {React.string("(")} </span>,
-    ...f,
-    <span className="symbol" key={"-2"}> {React.string(")")} </span>,
-  ]
-
-let intersperse = a =>
-  a->Array.flatMapWithIndex((e, i) =>
-    if i == 0 {
-      [e]
+type props = {term: HOTerm.t, grammar: HOTerm.grammar, scope: array<string>}
+module JsxTarget: MixfixPrinter.PRINT_TARGET with type out = React.element = {
+  type out = React.element
+  let symbolFont = s =>  <span className="term-op-lit">{React.string(s)}</span>
+  let renderSymbol = s => switch s {
+  | "&&" => symbolFont("∧")
+  | "||" => symbolFont("∨")
+  | "not" => symbolFont("¬")
+  | "->" => symbolFont("→")
+  | "<->" => symbolFont("↔")
+  | "all" => symbolFont("∀")
+  | "exists" => symbolFont("∃")
+  | "top" => symbolFont("⊤")
+  | "bot" => symbolFont("⊥")
+  | s => <span className="term-symbol">{React.string(s)}</span>
+  }
+  
+  let leaf = (~kind, s) => {
+    if kind == "constructor" {
+       <span className={`term-${kind}`}>{React.string(s->String.sliceToEnd(~start=1))}</span>
+    } else if kind == "symbol" || kind == "op-lit" {
+      renderSymbol(s)
     } else {
-      [React.string(" "), e]
+      <span className={`term-${kind}`}>{React.string(s)}</span>
     }
-  )
-type props1 = {term: HOTerm.t, scope: array<string>, local_scope: array<string>, brackets: bool}
-@react.componentWithProps
-let rec make1 = ({term, scope, local_scope,brackets}) =>
-  switch term {
-  | Var({idx}) => viewVar({idx, scope, local_scope})
-  | Symbol({name: s, constructor}) => if constructor { 
-    <span className="term-constructor"> {React.string(s)} </span> 
-  } else {
-    <span className="term-const"> {React.string(s)} </span> 
+  } 
+  let keyed = (el: React.element, i : int): React.element =>
+    <React.Fragment key={Int.toString(i)}> {el} </React.Fragment>
+  let seq = arr => arr->Array.mapWithIndex(keyed)->React.array
+  let spaced = arr => {
+    let interspersed =
+      arr
+      ->Array.mapWithIndex((el, i) => i == 0 ? [el] : [React.string(" "), el])
+      ->Belt.Array.concatMany
+    interspersed->Array.mapWithIndex(keyed)->React.array
   }
-  | Schematic({schematic: s}) =>
-    <span className="term-schematic">
-      {React.string("?")}
-      {React.int(s)}
+  let parens = el => <span>
+    <span className="term-lambda-punct"> {React.string("(")} </span> {el} <span className="term-lambda-punct"> {React.string(")")} </span>
     </span>
-  | App(_) =>
-    switch HOTerm.strip(term) {
-    | (func, args) =>
-      let xs = Array.concat([func], args)
-      let a =
-        <span className="term-app">
-          {xs
-          ->Array.mapWithIndex((t, i) =>
-            React.createElement(make1, withKey({term: t, scope, local_scope, brackets: true}, i))
-          )
-          ->intersperse
-          ->React.array}
-        </span>
-      if brackets {
-        [a]->parenthesise->React.array
-      } else {
-        a
-      }
-    }
-  | Lam({name, body}) => {
-      let new_scope = Array.concat([name], local_scope)
-      <span className="term-lambda">
-      {[makeLocalBinder(name),
-      React.createElement(make1, {term: body, scope, local_scope: new_scope, brackets: false})]->parenthesise->React.array}
-      </span>
-    }
-  }
-type props = {term: HOTerm.t, scope: array<string>}
-@react.componentWithProps
-let make = ({term, scope}) => make1({term, scope, local_scope: [], brackets: false})
+}
 
+module JsxPrinter = MixfixPrinter.Make(JsxTarget, HOTerm.PrintLeaf(JsxTarget))
+
+@react.componentWithProps
+let make = ({term, grammar, scope}) => 
+  JsxPrinter.prettyPrintWithGrammar(term, ~parentheses=false,~grammar, ~scope)

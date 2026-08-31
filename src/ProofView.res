@@ -99,9 +99,13 @@ module Make = (
     proof: Proof.checked,
     ctx: MethodView.Method.Context.t,
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Proof.checked, Term.subst) => unit,
   }
+  
+  
+  
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   @react.componentWithProps
   let rec make = (props: props) => {
@@ -125,13 +129,13 @@ module Make = (
         | Ok(ctx) =>
           <div className="proof-step">
           <div className=`display-tab display-tab-right 
-            ${display == Full ? "display-tab-selected" : ""}` onClick={e => changeDisplay(Full)}>
+            ${display == Full ? "display-tab-selected" : ""}` onClick={_ => changeDisplay(Full)}>
             <span className="typcn typcn-arrow-maximise" /></div>
           <div className=`display-tab 
-            ${display == Tree ? "display-tab-selected" : ""}` onClick={e => changeDisplay(Tree)}>
+            ${display == Tree ? "display-tab-selected" : ""}` onClick={_ => changeDisplay(Tree)}>
             <span className="typcn typcn-tree" /></div>
           <div className=`display-tab display-tab-left 
-            ${display == Summary ? "display-tab-selected" : ""}` onClick={e => changeDisplay(Summary)}>
+            ${display == Summary ? "display-tab-selected" : ""}` onClick={_ => changeDisplay(Summary)}>
             <span className="typcn typcn-arrow-minimise" /></div>          
             {if fixes->Array.length != 0 {
                 <>            
@@ -175,11 +179,12 @@ module Make = (
                               }), Term.makeSubst())
                               Ok(())
                             }
+                          | Ok((_,rest)) => Error("Trailing characters "->String.concat(rest))
                           | Error(e) => Error(e)
                           }
                         }
                       <li key={Int.toString(i.contents-1)}>
-                        <RuleView rule=r style=props.ruleStyle scope={ctx.fixes}>
+                        <RuleView rule=r style=props.ruleStyle scope={ctx.fixes} grammar={props.grammar}>
                         <UIWidgets.EditableLabel label=n onConfirm={handleChange} />
                         </RuleView>
                       </li>
@@ -192,7 +197,7 @@ module Make = (
             <div className="proof-show">
               <span className="proof-text"> {React.string("Show: ")} </span>
               <span className="proof-judgement">
-                <JudgmentView judgment={rule.conclusion} scope={ctx.fixes} />
+                <JudgmentView grammar={props.grammar} judgment={rule.conclusion} scope={ctx.fixes} />
               </span>
               {switch method {
               | Goal =>
@@ -249,7 +254,7 @@ module Make = (
                 </div>
               | Do(method) =>
                 <>
-                <span className="button-icon button-icon-red typcn typcn-trash floating-delete" onClick={ e=> {
+                <span className="button-icon button-icon-red typcn typcn-trash floating-delete" onClick={ _ => {
                   props.onChange(Proof.toGoal(props.proof), Term.makeSubst()) }
                   } />
                 {
@@ -257,8 +262,9 @@ module Make = (
                     MethodView.make(p =>
                       make({
                         proof: p["proof"],
-                        ctx: p["ctx"],
+                        ctx: p["ctx"],                        
                         ruleStyle: p["ruleStyle"],
+                        grammar: p["grammar"],
                         gen: p["gen"],
                         onChange: p["onChange"],
                       })
@@ -267,6 +273,7 @@ module Make = (
                       method,
                       ctx,
                       ruleStyle: props.ruleStyle,
+                      grammar: props.grammar,
                       gen: props.gen,
                       onChange: (newm, subst) => {
                         props.onChange(

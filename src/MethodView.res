@@ -8,6 +8,7 @@ module type METHOD_VIEW = {
     method: Method.t<'a>,
     ctx:Method.Context.t,
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -15,7 +16,8 @@ module type METHOD_VIEW = {
     "proof": 'a,
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
-    "gen": Term.gen,
+    "grammar": Term.grammar,
+    "gen": Term.gen,    
     "onChange": ('a, Term.subst) => unit,
   }
   let make: (srProps<'a> => React.element) => props<'a> => React.element
@@ -27,8 +29,7 @@ module RuleRefView = {
   let make = (~assms: array<string>, ~ruleRef: RuleRef.t) => {
     switch ruleRef {
     | Local({index}) =>
-      let name = assms->Belt.Array.get(index)
-      switch name {
+      switch assms[index] {
       | None =>
         <span className="rule-ref rule-ref--invalid"> {React.string(`#${Belt.Int.toString(index)}`)} </span>
       | Some(name) =>
@@ -67,6 +68,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     method: Method.t<'a>,
     ctx: Method.Context.t,
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,    
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -74,6 +76,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     "proof": 'a,
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
+    "grammar": Term.grammar,    
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
@@ -92,6 +95,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
                   "proof": sg,
                   "ctx": props.ctx,
                   "ruleStyle": props.ruleStyle,
+                  "grammar": props.grammar,
                   "gen": props.gen,
                   "onChange": (newa, subst: Term.subst) =>
                     props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
@@ -111,6 +115,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     method: Method.t<'a>,
     ctx: Method.Context.t,
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -118,6 +123,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     "proof": 'a,
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
+    "grammar": Term.grammar,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
@@ -136,6 +142,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
                   "proof": sg,
                   "ctx": props.ctx,
                   "ruleStyle": props.ruleStyle,
+                  "grammar": props.grammar,                  
                   "gen": props.gen,
                   "onChange": (newa, subst: Term.subst) =>
                     props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
@@ -159,6 +166,7 @@ module LemmaView = (
     method: Method.t<'a>,
     ctx: Method.Context.t,
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -166,7 +174,8 @@ module LemmaView = (
     "proof": 'a,
     "ctx": Method.Context.t,
     "ruleStyle": RuleView.style,
-    "gen": Term.gen,
+    "grammar": Term.grammar,
+    "gen": Term.gen,    
     "onChange": ('a, Term.subst) => unit,
   }
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
@@ -174,7 +183,7 @@ module LemmaView = (
     props => {
       <div>
         <b> {React.string("have ")} </b>
-        <RuleView rule={props.method.rule} scope={props.ctx.fixes} style={props.ruleStyle}>
+        <RuleView rule={props.method.rule} scope={props.ctx.fixes} grammar={props.grammar} style={props.ruleStyle}>
           {React.null}
         </RuleView>
         {React.createElement(
@@ -183,6 +192,7 @@ module LemmaView = (
             "proof": props.method.proof,
             "ctx": props.ctx,
             "ruleStyle": props.ruleStyle,
+            "grammar": props.grammar,            
             "gen": props.gen,
             "onChange": (proof, subst) => {props.onChange({...props.method, proof}, subst)},
           },
@@ -193,7 +203,8 @@ module LemmaView = (
             "proof": props.method.show,
             "ctx": props.ctx,
             "ruleStyle": props.ruleStyle,
-            "gen": props.gen,
+            "grammar": props.grammar,
+            "gen": props.gen,            
             "onChange": (show, subst) => {props.onChange({...props.method, show}, subst)},
           },
         )}
@@ -215,6 +226,7 @@ module CombineMethodView = (
     method: Method.t<'a>,
     ctx: Method.Context.t, 
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -227,6 +239,7 @@ module CombineMethodView = (
           method: m,
           ctx: props.ctx,
           ruleStyle: props.ruleStyle,
+          grammar: props.grammar,
           gen: props.gen,
           onChange: (n, s) => props.onChange(First(n), s),
         })
@@ -235,6 +248,7 @@ module CombineMethodView = (
           method: m,
           ctx: props.ctx,
           ruleStyle: props.ruleStyle,
+          grammar: props.grammar,          
           gen: props.gen,
           onChange: (n, s) => props.onChange(Second(n), s),
         })

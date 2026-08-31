@@ -6,7 +6,8 @@ module Make = (
   module TermView = TermView
   type props = {
     judgment: Judgment.t,
+    grammar: Term.grammar,
     scope: array<Term.meta>,
   }
-  let make = ({judgment, scope}) => TermView.make({term: judgment, scope})
+  let make = ({judgment, scope, grammar}) => TermView.make({term: judgment, scope, grammar})
 }

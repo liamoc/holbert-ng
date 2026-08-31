@@ -27,6 +27,7 @@ module Final = AtomDef.MakeAtomChoiceAndView(
 module HOTermJView = TermViewAsJudgmentView.Make(HOTerm, HOTerm, HOTermView)
 module AxiomS = Editable.TextArea(AxiomSet.Make(HOTerm, HOTerm, HOTermJView))
 module InductiveS = Editable.TextArea(HOInductiveSet)
+module NotationS = Editable.TextArea(HONotation)
 module HORewriteView = RewriteView.Make(HOTerm, HOTerm)
 module DerivationsOrLemmasView = MethodView.CombineMethodView(HOTerm,HOTerm,
   MethodView.CombineMethodView(HOTerm, HOTerm,

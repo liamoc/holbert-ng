@@ -238,7 +238,7 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 .term-boundvar {
     color: var(--bound-col);
 }
-.term-const {
+.term-symbol {
     font-family: "Computer Modern Sans";
 }
 .term-constructor {
@@ -246,8 +246,14 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
     color: var(--constructor-col);
     font-weight:bold;
 }
+.term-constructor::first-letter {
+    font-size: 0;
+}
 .placeholder {
     color: var(--placeholder-fg-col);
+}
+.term-lambda-punct {
+    color: var(--symbol-col);
 }
 /* SYMBOLS */
 .symbol {
@@ -390,9 +396,10 @@ display:block;
   background: #4c4c98 !important;
   color:white;
 }
+
 .floating-delete {
   float: right;
   display: block;
-  position: relative;
-  top: 1.6em;
+  position: absolute;
+  right: 5px;
 }

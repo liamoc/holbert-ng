@@ -4,7 +4,7 @@ open Zora
 module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module RuleInst = Rule.Make(Term, Judgment)
   let testParseInner = (t: Zora.t, input: string, expect: RuleInst.t, ~scope=[], ~msg=?) => {
-    let res = RuleInst.parseInner(input, ~scope, ~gen=Term.makeGen())
+    let res = RuleInst.parseInner(input, ~grammar=Term.emptyGrammar,  ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok(res) => {
         t->equal(res->Pair.second, "", ~msg=input ++ " input consumed")
@@ -20,7 +20,7 @@ module MakeTest = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     ~scope=[],
     ~msg=?,
   ) => {
-    let res = RuleInst.parseTopLevel(input, ~scope, ~gen=Term.makeGen())
+    let res = RuleInst.parseTopLevel(input, ~grammar=Term.emptyGrammar,  ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok(res) => {
         t->equal(res->Pair.second, "", ~msg=input ++ " input consumed")

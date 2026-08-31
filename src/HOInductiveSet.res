@@ -1,4 +1,3 @@
-open Signatures
 open Component
 
 module Term = HOTerm
@@ -7,7 +6,7 @@ module JudgmentView = TermViewAsJudgmentView.Make(Term, Judgment, HOTermView)
 module Rule = Rule.Make(Term, Judgment)
 module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
 module Ports = Ports(Term, Judgment)
-type state = dict<Rule.t>
+type state = {grammar: Term.grammar, rules: dict<Rule.t>}
 type props = {
   content: state,
   imports: Ports.t,
@@ -227,7 +226,7 @@ let generateCasesRule = (group: predicateGroup): Rule.t => {
   }
 }
 
-let derived = (state: state): state =>
+let derived = (state: dict<Rule.t>): dict<Rule.t> =>
   state
   ->groupByPredicate
   ->Array.flatMap(group => {
@@ -238,17 +237,17 @@ let derived = (state: state): state =>
   })
   ->Dict.fromArray
 let serialise = (state: state) =>
-  state
+  state.rules
   ->Dict.toArray
-  ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))
+  ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=state.grammar))
   ->Array.join("\n")
-let deserialise = (str: string, ~imports as _: Ports.t) => {
+let deserialise = (str: string, ~imports: Ports.t) => {
   let cur = ref(str)
   let go = ref(true)
   let results = Dict.make()
   let ret = ref(Error("impossible"))
   while go.contents {
-    switch Rule.parseTopLevel(cur.contents, ~scope=[]) {
+    switch Rule.parseTopLevel(cur.contents, ~grammar=imports.grammar, ~scope=[]) {
     | Ok((t, n), rest) =>
       if n->String.trim == "" {
         go := false
@@ -269,24 +268,24 @@ let deserialise = (str: string, ~imports as _: Ports.t) => {
     }
   }
   ret.contents->Result.map(state => (
-    state,
-    {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None},
+    {rules:state, grammar: imports.grammar},
+    {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None, grammar: Term.emptyGrammar},
   ))
 }
 
 let make = props => {
-  Console.log(props)
   <div
     className={"axiom-set axiom-set-"->String.concat(
       String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
     )}
   >
-    {Dict.toArray(props.content)
+    {Dict.toArray(props.content.rules)
     ->Array.mapWithIndex(((n, r), i) =>
       <RuleView
         rule={r}
         scope={[]}
         key={String.make(i)}
+        grammar={props.content.grammar}
         style={props.imports.ruleStyle->Option.getOr(Hybrid)}
       >
         {React.string(n)}
@@ -300,11 +299,12 @@ let make = props => {
             <h1> {React.string("Derived Rules")} </h1>
           </header>
         </summary>
-        {Dict.toArray(derived(props.content))
+        {Dict.toArray(derived(props.content.rules))
         ->Array.mapWithIndex(((n, r), i) =>
           <RuleView
             rule={r}
             scope={[]}
+            grammar={props.content.grammar}
             key={String.make(i)}
             style={props.imports.ruleStyle->Option.getOr(Hybrid)}
           >

@@ -7,6 +7,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     method: Method.t<'a>,
     ctx: Context.t,
     ruleStyle: RuleView.style,
+    grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
@@ -15,6 +16,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     "proof": 'a,
     "ctx": Context.t,
     "ruleStyle": RuleView.style,
+    "grammar": Term.grammar,
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
@@ -35,6 +37,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                     "proof": sg,
                     "ctx": props.ctx,
                     "ruleStyle": props.ruleStyle,
+                    "grammar": props.grammar,
                     "gen": props.gen,
                     "onChange": (newa, subst: Term.subst) =>
                       props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
@@ -53,6 +56,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
           "proof": props.method.newGoal,
           "ctx": props.ctx,
           "ruleStyle": props.ruleStyle,
+          "grammar": props.grammar,
           "gen": props.gen,
           "onChange": (newa, subst: Term.subst) => 
             props.onChange(props.method->Method.updateGoal(_=>newa), subst), 

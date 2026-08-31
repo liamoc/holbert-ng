@@ -44,12 +44,12 @@ module Make = (
       m->Method.substitute(subst)->Method.map(m => m->substitute(subst))
     ),
   }
-  let rec prettyPrint = (prf: t, ~scope, ~assms, ~indentation=0) => {
+  let rec prettyPrint = (prf: t, ~grammar, ~scope, ~assms, ~indentation=0) => {
     let mtd = switch prf.method {
     | None => "?"
     | Some(m) =>
       Method.prettyPrint(
-        m,
+        m, ~grammar,
         ~scope=prf.fixes->Array.concat(scope),
         ~assms=assms->Array.concat(prf.assumptions),
         ~indentation=indentation + 2,
@@ -78,7 +78,7 @@ module Make = (
     )
     ->String.concat(mtd)
   }
-  let rec parse = (input, ~scope, ~assms, ~gen) => {
+  let rec parse = (input, ~grammar, ~scope, ~assms, ~gen) => {
     let it = ref(Error(""))
     let cur = ref(String.trim(input))
     let fixes = []
@@ -118,7 +118,7 @@ module Make = (
         Ok(({fixes, assumptions, method: None, display}, cur.contents->String.sliceToEnd(~start=1)))
       | Some(keyword) => {
           cur := cur.contents->String.sliceToEnd(~start=String.length(keyword))
-          switch Method.parse(cur.contents, ~keyword, ~scope=scope', ~assms=assms', ~gen, ~subparser=parse) {
+          switch Method.parse(cur.contents, ~grammar, ~keyword, ~scope=scope', ~assms=assms', ~gen, ~subparser=parse) {
           | Ok((method, r)) => Ok(({fixes, assumptions, method: Some(method), display}, r))
           | Error(e) => Error(e)
           }
@@ -155,9 +155,9 @@ module Make = (
     }
   } //result<Context, string>
 
-  let rec toGoal = (prf: checked) => 
+  let toGoal = (prf: checked) => 
     switch prf {
-    | ProofError({raw, rule: _, msg: _}) => prf
+    | ProofError(_) => prf
     | Checked({fixes,assumptions,method:_,rule, display}) => Checked({fixes,assumptions,method: Goal, rule, display})
     }
   let rec uncheck = (prf: checked) =>
@@ -174,7 +174,6 @@ module Make = (
       }
     }
   let rec check = (ctx: Context.t, prf: t, rule: Rule.t) => {
-    let _ruleStr = Rule.prettyPrintInline(rule, ~scope=[])
     switch enter(ctx, prf, rule) {
     | Ok(ctx') =>
       switch prf.method {

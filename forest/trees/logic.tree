@@ -1,97 +1,96 @@
 \title{Logical Connectives}
 \taxon{Definition}
 \import{holbert-macros}
-\hol/axioms{proplogic}{
+\hol/notation{logicsymbols}{
   \hol/dep{config}{config}
 }{
+  infixl or _||_
+  infixl and _&&_
+  infixr implies _->_
+  tighter not than and
+  tighter and than or
+  tighter or than implies
+}
+\hol/axioms{proplogic}{
+  \hol/dep{config}{config}
+  \hol/local{logicsymbols}
+}{
   A.B.
-  A    B
-  ------ AndI
-  (And A B)
-  
-  A.B.  
-  (And A B)
-  --------- AndE1
-  A
-  
-  A.B.  
-  (And A B)
-  --------- AndE2
-  B   
-  
+    A
+    B
+    ---- AndI
+    (A && B)
   A.B.
-  A
-  ---------- OrI1
-  (Or A B)
-  
+    (A && B)
+    ---------- AndE1
+    A
   A.B.
-  B
-  ---------- OrI2
-  (Or A B)
-  
+    (A && B)
+    ---------- AndE2
+    B
+  A.B.
+    A
+    ---- OrI1
+    (A || B)
+  A.B.
+    B
+    ---- OrI2
+    (A || B)
   A.B.C.
-  (Or A B)
-  [A |- C]
-  [B |- C]
-  ---------- OrE
-  C
-  
-  
-  -------- TrueI
-  True
-  
+    (A || B)
+    [ A |- C]
+    [ B |- C]
+    --------- OrE
+    C
+
+    ---- TrueI
+    top
   X.
-  False
-  --------- FalseE
-  X
-  
+    bot
+    ---- FalseE
+    X
   A.
-  [X. A |- X]
-  ----------- NotI
-  (Not A)
-  
+    [X. A |- X]
+    ----------- NotI
+    (not A)
   A.X.
-  (Not A) A
-  --------- NotE
-  X
-  
+    (not A)
+    A
+    -------- NotE
+    X
   A.B.
-  [A |- B]
-  -------- ImpI
-  (Implies A B)
-  
+    [ A |- B]
+    --------- ImpI
+    (A -> B)
   A.B.
-  (Implies A B) A
-  --------------- ImpE
-  B
-  
+    (A -> B)
+    A
+    ------------ ImpE
+    B
   P.
-  [a. (P a)]
-  -------- AllI
-  (All (x. (P x)))
-  
-  
+    [a. (P a)]
+    ---------- AllI
+    (all (x. P x))
   P.x.
-  (All (a. (P a)))
-  ---------------- AllE
-  (P x)
-  
+    (all (a. P a))
+    ------------------ AllE
+    (P x)
   P.x.
-  (P x)
-  --------------- ExI
-  (Exists (a. (P a)))
-  
+    (P x)
+    ----- ExI
+    (exists (a. P a))
   P.C.
-  (Exists (a. (P a))) [x. (P x) |- C]
-  ---------------- ExE
-  C
+    (exists (a. P a))
+    [x. (P x) |- C]
+    ------------------ ExE
+    C
 }
 
-\hol/proof{test}{\hol/local{proplogic} \hol/dep{config}{config}}{
+\hol/proof{test}{\hol/local{proplogic} \hol/dep{config}{config}   \hol/local{logicsymbols}}{
   P.
   
   ------------------- Test
-  (Implies (Exists (x. (Not (P x)))) (Not (All (x. P x))))
+  ((exists (x. not (P x))) -> (not (all (x. P x))))
 
  P. |- ?
 }

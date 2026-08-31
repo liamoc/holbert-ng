@@ -10,8 +10,7 @@ include Signatures.TERM
   and type meta = string
   and type schematic = int
   and type subst = Belt.Map.Int.t<t>
-
-
+  and type grammar = MixfixGrammar.compiled 
 
 let mapTerms: (t, t => t) => t
 let strip: t => (t, array<t>)
@@ -29,3 +28,5 @@ let replaceAt: (t, path, t) => t
 let prettyPrintPath : path => string
 let positions: t => array<(path, t, array<string>)>
 let parsePath : string => (path, string)
+module PrintLeaf : (O: MixfixPrinter.PRINT_TARGET) 
+  => MixfixPrinter.PRINT_LEAF with type out = O.out and type term = t and type meta = meta

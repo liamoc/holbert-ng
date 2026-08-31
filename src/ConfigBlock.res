@@ -12,9 +12,9 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   }
   let deserialise = str =>
     switch str {
-    | "Gentzen" => Ok((Gentzen, {Ports.facts: Dict.make(), ruleStyle: Some(Gentzen)}))
-    | "Linear" => Ok((Linear, {Ports.facts: Dict.make(), ruleStyle: Some(Linear)}))
-    | "Hybrid" => Ok((Hybrid, {Ports.facts: Dict.make(), ruleStyle: Some(Hybrid)}))
+    | "Gentzen" => Ok((Gentzen, {Ports.facts: Dict.make(), ruleStyle: Some(Gentzen), grammar: Term.emptyGrammar}))
+    | "Linear" => Ok((Linear, {Ports.facts: Dict.make(), ruleStyle: Some(Linear), grammar: Term.emptyGrammar}))
+    | "Hybrid" => Ok((Hybrid, {Ports.facts: Dict.make(), ruleStyle: Some(Hybrid), grammar: Term.emptyGrammar}))
     | _ => Error("unknown rule style")
     }
   let serialise = style =>
@@ -29,12 +29,10 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     let onChange = e => {
       let target = JsxEvent.Form.target(e)
       let value: string = target["value"]
-      Console.log("FOO")
-      Console.log(value)
       switch deserialise(value) {
       | Ok((sty, _)) => {
           setStyle(_ => sty)
-          props.onChange(sty, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty)})
+          props.onChange(sty, ~exports={Ports.facts: Dict.make(), ruleStyle: Some(sty), grammar: Term.emptyGrammar})
         }
       | Error(_) => ()
       }

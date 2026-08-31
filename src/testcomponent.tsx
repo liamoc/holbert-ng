@@ -1,5 +1,5 @@
 import * as ComponentGraph from "./componentgraph";
-import { AxiomS, ConfS, TheoremS, InductiveS, AxiomStr, TheoremStr } from "./Scratch.mjs";
+import { AxiomS, ConfS, TheoremS, InductiveS, NotationS, AxiomStr, TheoremStr } from "./Scratch.mjs";
 import ReactDOM from "react-dom/client";
 import React from "react";
 
@@ -83,6 +83,7 @@ ComponentGraph.setup({
 	"hol-inductive": HolComp(InductiveS),
   "hol-config": HolComp(ConfS),
   "hol-proof": HolComp(TheoremS),
+  "hol-notation": HolComp(NotationS),
   "hol-string": HolComp(AxiomStr),
   "hol-string-proof": HolComp(TheoremStr),
 }); //"hol-config": ConfigComponent, "hol-proof":ProofComponent});

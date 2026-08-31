@@ -13,12 +13,12 @@ module Make = (Atom: AtomDef.ATOM): {
     | Compound({subexps: array<t>})
     | Var({idx: int})
     | Schematic({schematic: int, allowed: array<int>})
-
   include Signatures.TERM
     with type t := t
     and type meta = string
     and type schematic = int
     and type subst = Map.t<int, t>
+    and type grammar = unit
   let mapTerms: (t, t => t) => t
 } => {
   type rec t =
@@ -30,6 +30,9 @@ module Make = (Atom: AtomDef.ATOM): {
   type meta = string
   type schematic = int
   type subst = Map.t<schematic, t>
+  type grammar = unit
+  let emptyGrammar = ()
+  let combineGrammars = (_,_) => ()
   let substEqual = Util.mapEqual
   let mapSubst = Util.mapMapValues
   let makeSubst = () => {
@@ -237,7 +240,7 @@ module Make = (Atom: AtomDef.ATOM): {
   let makeGen = () => {
     ref(0)
   }
-  let rec prettyPrint = (it: t, ~scope: array<string>) =>
+  let rec prettyPrint = (it: t, ~grammar: unit, ~scope: array<string>) =>
     switch it {
     | Atom(name) => Atom.prettyPrint(name, ~scope)
     | Var({idx}) => prettyPrintVar(idx, scope)
@@ -249,12 +252,11 @@ module Make = (Atom: AtomDef.ATOM): {
       ->String.concat(")")
     | Compound({subexps}) =>
       "("
-      ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~scope)), " "))
+      ->String.concat(Array.join(subexps->Array.map(e => prettyPrint(e, ~grammar, ~scope)), " "))
       ->String.concat(")")
     }
 
-  let prettyPrintSubst = (sub, ~scope) =>
-    Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
+  
   let nameRES = "^([^\\s.\\[\\]()]+)\\."
   let prettyPrintMeta = (str: string) => {
     String.concat(str, ".")
@@ -292,7 +294,7 @@ module Make = (Atom: AtomDef.ATOM): {
     whitespace->then(inner)
   }
 
-  let parse = (str: string, ~scope: array<string>, ~gen=?) =>
+  let parse = (str: string, ~grammar as _: unit, ~scope: array<string>, ~gen=?) =>
     Parser.runParser(mkParser(~scope, ~gen?), str)
 
   let rec concrete = t =>

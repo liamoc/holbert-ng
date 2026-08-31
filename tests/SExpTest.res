@@ -41,7 +41,7 @@ zoraBlock("parse compound", t => {
 })
 
 let parse = (input: string) =>
-  SExp.parse(input, ~scope=[], ~gen=SExp.makeGen())->Result.getExn->Pair.first
+  SExp.parse(input, ~grammar=SExp.emptyGrammar, ~scope=[], ~gen=SExp.makeGen())->Result.getExn->Pair.first
 
 zoraBlock("unify var", t => {
   let x = parse("x")

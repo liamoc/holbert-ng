@@ -11,6 +11,7 @@ module Make = (
   type props = {
     rule: Rule.t,
     style: style,
+    grammar: Term.grammar,
     scope?: array<Term.meta>,
     children: React.element,
   }
@@ -35,7 +36,7 @@ module Make = (
             <span key={String.make(i)} className="rule-context">
               {React.createElement(
                 make,
-                withKey({rule: p, scope, children: React.string(""), style: props.style}, i),
+                withKey({rule: p, scope, children: React.string(""), grammar: props.grammar, style: props.style}, i),
               )}
             </span>
           )
@@ -57,7 +58,7 @@ module Make = (
         } else {
           React.string("")
         }}
-        <JudgmentView judgment={conclusion} scope={scope} />
+        <JudgmentView judgment={conclusion} grammar={props.grammar} scope={scope} />
         {if premises->Array.length > 0 {
           <span className="symbol symbol-turnstile symbol-bold"> {React.string(")")} </span>
         } else {
@@ -82,7 +83,7 @@ module Make = (
               {React.array(
                 premises->Array.mapWithIndex((p, i) =>
                   <td className="rule-cell rule-premise" key={String.make(i)}>
-                    <Premise rule={p} scope={scope} key={String.make(i)} style={props.style}>
+                    <Premise rule={p} scope={scope} grammar={props.grammar} key={String.make(i)} style={props.style}>
                       {React.string("")}
                     </Premise>
                   </td>
@@ -102,7 +103,7 @@ module Make = (
               <td
                 colSpan={premises->Array.length} className="rule-cell rule-hypothetical-conclusion"
               >
-                <JudgmentView judgment={conclusion} scope={scope} />
+                <JudgmentView judgment={conclusion} grammar={props.grammar} scope={scope} />
               </td>
             </tr>
           </tbody>
@@ -126,7 +127,7 @@ module Make = (
                 React.array(
                   premises->Array.mapWithIndex((p, i) =>
                     <td className="rule-cell rule-premise" key={String.make(i)}>
-                      <Premise rule={p} scope={scope} key={String.make(i)} style={props.style}>
+                      <Premise rule={p} scope={scope} grammar={props.grammar}  key={String.make(i)} style={props.style}>
                         {React.string("")}
                       </Premise>
                     </td>
@@ -139,7 +140,7 @@ module Make = (
             </tr>
             <tr>
               <td colSpan={premises->Array.length} className="rule-cell rule-conclusion">
-                <JudgmentView judgment={conclusion} scope={scope} />
+                <JudgmentView judgment={conclusion} grammar={props.grammar} scope={scope} />
               </td>
             </tr>
           </tbody>

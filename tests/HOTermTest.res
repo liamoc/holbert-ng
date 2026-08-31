@@ -4,7 +4,7 @@ module Util = TestUtil.MakeTerm(HOTerm)
 
 
 let parse = (input: string) =>
-  HOTerm.parse(input, ~scope=[], ~gen=HOTerm.makeGen())->Result.getExn->Pair.first
+  HOTerm.parse(input, ~grammar=HOTerm.emptyGrammar, ~scope=[], ~gen=HOTerm.makeGen())->Result.getExn->Pair.first
 
 zoraBlock("unification", t => {
   let x = parse("(Implies A B)")

@@ -6,12 +6,13 @@ module type PORTS = {
 }
 module Ports = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   module Rule = Rule.Make(Term, Judgment)
-  type t = {facts: Dict.t<Rule.t>, ruleStyle: option<RuleView.style>}
-  let empty = {facts: Dict.make(), ruleStyle: None}
+  type t = {facts: Dict.t<Rule.t>, ruleStyle: option<RuleView.style>, grammar: Term.grammar}
+  let empty = {facts: Dict.make(), ruleStyle: None, grammar: Term.emptyGrammar}
   let combine = (p1, p2) => {
     let facts = Dict.copy(p1.facts)->Dict.assign(p2.facts)
     let ruleStyle = p2.ruleStyle->Option.mapOr(p1.ruleStyle, x => Some(x))
-    {facts, ruleStyle}
+    let grammar = Term.combineGrammars(p1.grammar, p2.grammar)
+    {facts, ruleStyle, grammar}
   }
 }
 

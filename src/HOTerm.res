@@ -9,7 +9,6 @@ type schematic = int
 type meta = string
 type subst = Belt.Map.Int.t<t>
 
-
 type gen = {mutable next: int}
 
 let makeGen = () => {next: 0}
@@ -26,10 +25,9 @@ let seen = (g, s) =>
   }
 
 let place = (schematic, ~scope) => {
-  let n = Belt.Array.length(scope)
   Belt.Array.reduceWithIndex(scope, Schematic({schematic: schematic}), (acc, _name, i) => App({
     func: acc,
-    arg: Var({idx: n - 1 - i}),
+    arg: Var({idx: i}),
   }))
 }
 
@@ -192,13 +190,6 @@ let rec strip = (term: t): (t, array<t>) => {
   | _ => (term, [])
   }
 }  
-let rec stripLam = (it: t): (array<string>, t) =>
-  switch it {
-  | Lam({name, body}) =>
-    let (names, body) = stripLam(body)
-    (Array.concat([name], names), body)
-  | _ => ([], it)
-  }
 let rec unstrip = (term: t, args: array<t>): t => {
     if args->Array.length == 0 {
       term
@@ -212,7 +203,7 @@ let rec unstrip = (term: t, args: array<t>): t => {
 
 
 
-let rec concrete = t => {
+let concrete = t => {
   let (head, _args) = strip(t)
   switch head {
   | Schematic(_) => false
@@ -418,216 +409,9 @@ let unify = (t1, t2, ~gen=?) => {
   }
 }
 
+type grammar = MixfixGrammar.compiled
 
-
-let prettyPrintVar = (idx: int, scope: array<string>) =>
-  switch scope[idx] {
-  | Some(n) if Array.indexOf(scope, n) == idx => n
-  | _ => "\\"->String.concat(String.make(idx))
-  }  
-let rec prettyPrint = (it: t, ~scope: array<string>) =>
-  switch it {
-  | Symbol({name, constructor}) =>
-    if constructor {
-      String.concat("@", name)
-    } else {
-      name
-    }
-  | Var({idx}) => prettyPrintVar(idx, scope)
-  | Schematic({schematic}) => "?"->String.concat(String.make(schematic))
-  | Lam(_) =>
-    let (names, body) = stripLam(it)
-    let (func, args) = strip(body)
-    let bodies = Array.concat([func], args)
-    let innerScope = Array.concat(Array.toReversed(names), scope)
-    "("
-    ->String.concat(Array.join(names->Array.map(name => String.concat(name, ".")), " "))
-    ->String.concat(" ")
-    ->String.concat(Array.join(bodies->Array.map(e => prettyPrint(e, ~scope=innerScope)), " "))
-    ->String.concat(")")
-  | App(_) =>
-    let (func, args) = strip(it)
-    "("
-    ->String.concat(prettyPrint(func, ~scope))
-    ->String.concat(" ")
-    ->String.concat(Array.join(args->Array.map(e => prettyPrint(e, ~scope)), " "))
-    ->String.concat(")")
-  }
-let prettyPrintMeta = (str: string) => {
-    String.concat(str, ".")
-  }
-let prettyPrintSubst = (sub: subst, ~scope: array<string>) =>
-  Util.prettyPrintIntMap(sub, ~showV=t => prettyPrint(t, ~scope))
-  
-  
-  
-  
 let nameRES = "^([^\\s.\\[\\]()]+)\\."
-let symbolRES = "^([^\\s.\\[\\]()]+)"
-exception ParseError(string)
-type token =
-  | LParen
-  | RParen
-  | VarT(int)
-  | SchematicT(int)
-  | ConsT(string)
-  | NameT(string)
-  | AtomT(string)
-  | EOF
-let varRegexpString = "^\\\\([0-9]+)"
-let schematicRegexpString = "^\\?([0-9]+)"
-
-let scopeVarToken = (str: string, scope: array<string>): option<(int, string)> => {
-  let result = ref(None)
-  scope->Array.forEachWithIndex((name, idx) => {
-    let len = String.length(name)
-    let matches =
-      String.slice(str, ~start=0, ~end=len) == name &&
-        switch str->String.charAt(len) {
-        | "" | " " | "\t" | "\n" | "\r" | "[" | "]" | "(" | ")" => true
-        | _ => false
-        }
-    if result.contents == None && matches {
-      result := Some((idx, str->String.sliceToEnd(~start=len)))
-    }
-  })
-  result.contents
-}
-let tokenize = (str0: string, ~scope: array<string>, ~gen=?): (token, string) => {
-  let str = str0->String.trimStart
-  if str->String.length == 0 {
-    (EOF, "")
-  } else {
-    let rest = () => str->String.sliceToEnd(~start=1)
-    switch str->String.charAt(0) {
-    | "(" => (LParen, rest())
-    | ")" => (RParen, rest())
-    | "\\" => {
-        let re = RegExp.fromStringWithFlags(varRegexpString, ~flags="y")
-        switch re->RegExp.exec(str) {
-        | None => throw(ParseError("invalid variable"))
-        | Some(res) =>
-          switch RegExp.Result.matches(res) {
-          | [n] => (
-              VarT(n->Int.fromString->Option.getExn),
-              String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
-            )
-          | _ => throw(ParseError("invalid variable"))
-          }
-        }
-      }
-    | "?" => {
-        let re = RegExp.fromStringWithFlags(schematicRegexpString, ~flags="y")
-        switch re->RegExp.exec(str) {
-        | None => throw(ParseError("invalid schematic"))
-        | Some(res) =>
-          switch RegExp.Result.matches(res) {
-          | [n] => (
-              SchematicT(n->Int.fromString->Option.getExn),
-              String.sliceToEnd(str, ~start=RegExp.lastIndex(re)),
-            )
-          | _ => throw(ParseError("invalid schematic"))
-          }
-        }
-      }
-    | _ => {
-        let reName = RegExp.fromStringWithFlags(symbolRES, ~flags="y")
-        switch scopeVarToken(str, scope) {
-        | Some((idx, rest)) => (VarT(idx), rest)
-        | None => switch reName->RegExp.exec(str) {
-          | Some(res) => {
-            let rest = String.sliceToEnd(str, ~start=RegExp.lastIndex(reName))
-            switch RegExp.Result.matches(res) {
-            | [n] => if n->String.charAt(0)=="@" {
-                (ConsT(n->String.sliceToEnd(~start=1)), rest)
-              } else if rest->String.charAt(0)=="." {
-                (NameT(n), rest->String.sliceToEnd(~start=1))
-              } else {
-                (AtomT(n), rest)
-              }
-         
-            | _ => throw(ParseError("invalid symbol"))
-            }
-          }
-          | None => throw(ParseError("unrecognised input"))
-          }
-        }
-      }
-    }
-  }
-}
-type rec simple =
-  | ListS({xs: array<simple>})
-  | AtomS({name: string, constructor: bool})
-  | VarS({idx: int})
-  | SchematicS({schematic: int})
-  | LambdaS({name: string, body: simple})
-let rec parseSimple = (str: string, ~scope: array<string>, ~gen=?): (simple, string) => {
-  let (t0, rest) = tokenize(str, ~scope, ~gen?)
-  switch t0 {
-  | LParen => {
-      let (t1, rest1) = tokenize(rest, ~scope, ~gen?)
-      switch t1 {
-      | NameT(name) => {
-          let (result, rest2) = parseSimple(
-            "("->String.concat(rest1),
-            ~scope=Array.concat([name], scope),
-            ~gen?,
-          )
-          (LambdaS({name, body: result}), rest2)
-        }
-      | RParen => (ListS({xs: []}), rest1)
-      | _ => {
-          let (head, rest2) = parseSimple(rest, ~scope, ~gen?)
-          let (tail, rest3) = parseSimple("("->String.concat(rest2), ~scope, ~gen?)
-          switch tail {
-          | ListS({xs}) => (ListS({xs: Array.concat([head], xs)}), rest3)
-          | _ => throw(Util.Unreachable("bug"))
-          }
-        }
-      }
-    }
-  | RParen => throw(ParseError("unexpected right parenthesis"))
-  | VarT(idx) => (VarS({idx: idx}), rest)
-  | SchematicT(schematic) => (SchematicS({schematic: schematic}), rest)
-  | AtomT(name) => (AtomS({name, constructor: false}), rest)
-  | ConsT(name) => (AtomS({name, constructor: true}), rest)
-  | NameT(name) => {
-      let (result, rest1) = parseSimple(rest, ~scope=Array.concat([name], scope), ~gen?)
-      (LambdaS({name, body: result}), rest1)
-    }
-  | EOF => throw(ParseError("unexpected end of file"))
-  }
-}
-let rec parseAll = (simple: simple, ~gen=?): t => {
-  switch simple {
-  | ListS({xs}) => {
-      let ts = xs->Array.map(x => parseAll(x, ~gen?))
-      if ts->Array.length == 0 {
-        throw(ParseError("empty list"))
-      } else {
-        ts
-        ->Array.sliceToEnd(~start=1)
-        ->Array.reduce(ts[0]->Option.getExn, (acc, x) => App({func: acc, arg: x}))
-      }
-    }
-  | AtomS({name, constructor}) => Symbol({name, constructor})
-  | VarS({idx}) => Var({idx: idx})
-  | SchematicS({schematic}) =>
-    switch gen {
-    | Some(g) => {
-        seen(g, schematic)
-        Schematic({schematic: schematic})
-      }
-    | None => throw(ParseError("Schematics not allowed here"))
-    }
-  | LambdaS({name, body}) =>
-    Lam({
-      name,
-      body: parseAll(body, ~gen?),
-    })
-  }
-}
 let prettyPrintMeta = (str: string) => {
   String.concat(str, ".")
 }
@@ -642,14 +426,8 @@ let parseMeta = (str: string) => {
     }
   }
 }
-let parse = (str: string, ~scope: array<string>, ~gen=?) => {
-  try {
-    let (simple, rest) = parseSimple(str, ~scope, ~gen?)
-    Ok((parseAll(simple, ~gen?), rest))
-  } catch {
-  | ParseError(msg) => Error(msg)
-  }
-}
+
+
 let mapTerms = (t, f) => f(t)
 
 
@@ -726,8 +504,185 @@ let parsePath = (str:string) => {
       switch RegExp.Result.matches(res) {
       | [] => ([],str)
       | [n] => (n->String.split("")->Array.map(toStep),rest)
+      | _ => ([],str)
       }
     }    
   | _ => ([],str)
   }
 }
+
+let emptyGrammar = MixfixGrammar.emptyCompiled
+let combineGrammars = MixfixGrammar.combine
+
+module ParseLeaf: MixfixParser.PARSE_LEAF
+  with type term = t
+  and type meta = string
+  and type gen = gen = {
+  type term = t
+  type meta = meta
+  type gen = gen
+
+  let debruijnRE = %re("/^\\(\d+)/")
+  let schematicRE = %re("/^\?(\d+)/")
+
+  let parseLeaf = (input, ~reserved, ~scope, ~gen=?, ~recur) => {
+    let input = MixfixLex.skipWs(input)
+    switch debruijnRE->RegExp.exec(input) {
+    | Some(res) =>
+      switch (res[0], res[1]) {
+      | (Some(Some(whole)), Some(Some(numStr))) =>
+        switch Int.fromString(numStr) {
+        | None => Error("invalid de Bruijn index")
+        | Some(idx) =>
+          idx < Array.length(scope)
+            ? Ok((Var({idx: idx}), MixfixLex.sliceToEnd(input, ~start=String.length(whole))))
+            : Error(
+                `de Bruijn index \\${numStr} out of scope (only ${Int.toString(
+                    Array.length(scope),
+                  )} binders in scope)`,
+              )
+        }
+      | _ => Error("malformed de Bruijn index")
+      }
+    | None =>
+      if MixfixLex.charAt(input, 0) == "`" {
+        switch MixfixLex.takeIdent(MixfixLex.sliceToEnd(input, ~start=1)) {
+        | Some((name, rest)) => Ok((Symbol({name, constructor: false}), rest))
+        | None => Error("expected identifier after `")
+        }
+      } else if MixfixLex.charAt(input, 0) == "(" {
+        let inner = MixfixLex.sliceToEnd(input, ~start=1)
+        switch MixfixLex.takeIdent(inner) {
+        | Some((name, afterName)) if MixfixLex.charAt(MixfixLex.skipWs(afterName), 0) == "." =>
+          let bodyInput = MixfixLex.sliceToEnd(MixfixLex.skipWs(afterName), ~start=1)
+          switch recur(bodyInput, ~scope=Array.concat([name], scope), ~gen?) {
+          | Error(e) => Error(e)
+          | Ok((body, rest)) =>
+            let rest = MixfixLex.skipWs(rest)
+            MixfixLex.charAt(rest, 0) == ")"
+              ? Ok((Lam({name, body}), MixfixLex.sliceToEnd(rest, ~start=1)))
+              : Error("expected closing paren after lambda body")
+          }
+        | _ =>
+          switch recur(inner, ~scope, ~gen?) {
+          | Error(e) => Error(e)
+          | Ok((body, rest)) =>
+            let rest = MixfixLex.skipWs(rest)
+            MixfixLex.charAt(rest, 0) == ")"
+              ? Ok((body, MixfixLex.sliceToEnd(rest, ~start=1)))
+              : Error("expected closing paren" + rest)
+          }
+        }
+      } else {
+        switch schematicRE->RegExp.exec(input) {
+        | Some(res) =>
+          switch (res[0], res[1]) {
+          | (Some(Some(whole)), Some(Some(numStr))) =>
+            switch Int.fromString(numStr) {
+            | None => Error("invalid schematic index")
+            | Some(n) =>
+              switch gen {
+              | Some(g') => seen(g', n)
+              | None => ()
+              }
+              Ok((
+                Schematic({schematic: n}),
+                MixfixLex.sliceToEnd(input, ~start=String.length(whole)),
+              ))
+            }
+          | _ => Error("malformed schematic")
+          }
+        | None =>
+          if MixfixLex.charAt(input, 0) == "@" {
+            switch MixfixLex.takeIdent(MixfixLex.sliceToEnd(input, ~start=1)) {
+            | Some((name, rest)) => Ok((Symbol({name, constructor: true}), rest))
+            | None => Error("expected constructor name after @")
+            }
+          } else {
+            switch MixfixLex.takeIdent(input) {
+            | None => Error(`expected a term at: ${input}`)
+            | Some((name, _)) if Belt.Set.String.has(reserved, name) =>
+              Error(`unexpected reserved word "${name}"`)
+            | Some((name, rest)) =>
+              switch Belt.Array.getIndexBy(scope, x => x == name) {
+              | Some(pos) => Ok((Var({idx: pos}), rest))
+              | None => Ok((Symbol({name, constructor: false}), rest))
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  let mkApp = (f, a) => App({func: f, arg: a})
+  let mkOpHead = (~name) => Symbol({name, constructor: false})
+}
+
+module Parser = MixfixParser.Make(ParseLeaf)
+let parse = Parser.parse
+
+
+module PrintLeaf = (O: MixfixPrinter.PRINT_TARGET) => {
+  
+  type term = t
+  type meta = meta
+  type out = O.out
+
+  let printLeaf = (term, localIdx, scope, _ctx, ~reserved, ~recur) =>
+    switch term {
+    | Lam({name, body}) =>
+      Some(
+        O.seq([
+          O.leaf(~kind="lambda-punct", "("),
+          O.leaf(~kind="binder", name),
+          O.leaf(~kind="lambda-punct", ". "),
+          recur(body, localIdx+1, Array.concat( [name],scope), MixfixPrinter.Top),
+          O.leaf(~kind="lambda-punct", ")"),
+        ]),
+      )
+    | Var({idx}) =>
+      Some(
+        switch scope[idx] {
+        | None => O.leaf(~kind="var-debruijn", `\\${Int.toString(idx)}`)
+        | Some(name) =>
+          let resolvedIdx = Belt.Array.getIndexBy(scope, x => x == name)
+          let varType = idx >= localIdx ? "metavar" : "boundvar"
+          resolvedIdx == Some(idx)
+            ? O.leaf(~kind=varType, name)
+            : O.leaf(~kind="var-debruijn", `\\${Int.toString(idx)}`)
+        },
+      )
+    | Schematic({schematic}) => Some(O.leaf(~kind="schematic", `?${Int.toString(schematic)}`))
+    | Symbol({name, constructor}) =>
+      Some(
+        constructor
+          ? O.leaf(~kind="constructor", `@${name}`)
+          : Belt.Set.String.has(reserved, name)
+            ? O.leaf(~kind="symbol-escaped", `\`${name}`)
+            : O.leaf(~kind="symbol", name),
+      )
+    | App(_) => None
+    }
+
+  let tryStrip = term => {
+    let (head, args) = strip(term)
+    if (args->Array.length > 0) {
+      Some((head,args))
+    } else {
+      None
+    }
+  }
+
+  let tryOpHead = head =>
+    switch head {
+    | Symbol({name, constructor: false}) => Some(name)
+    | _ => None
+    }
+
+}
+
+module StringPrinter = MixfixPrinter.Make(MixfixPrinter.StringTarget, PrintLeaf(MixfixPrinter.StringTarget))
+
+
+let prettyPrint = (term, ~grammar, ~scope) => StringPrinter.prettyPrintWithGrammar(term,~parentheses=true,~grammar,~scope)

@@ -79,7 +79,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
   exception InternalParseError(string)
-  let rec parseInner = (string, ~scope=[]: array<Term.meta>, ~gen=?) => {
+  let rec parseInner = (string, ~grammar: Term.grammar, ~scope=[]: array<Term.meta>, ~gen=?) => {
     if string->String.trim->String.get(0) == Some("[") {
       let cur = ref(String.make(string->String.trim->String.sliceToEnd(~start=1)))
       let it = ref(Error(""))
@@ -98,7 +98,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
           cur.contents->String.trim->String.slice(~start=0, ~end=2) != "|-" &&
             cur.contents->String.trim->String.get(0) != Some("]")
         ) {
-          switch parseInner(cur.contents, ~scope=vars->Array.concat(scope), ~gen?) {
+          switch parseInner(cur.contents, ~grammar, ~scope=vars->Array.concat(scope), ~gen?) {
           | Ok(p, rest) => {
               cur := rest
               premises->Array.push(p)
@@ -116,7 +116,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
           }
         } else {
           cur := cur.contents->String.trim->String.sliceToEnd(~start=2)
-          switch Judgment.parse(cur.contents, ~scope=vars->Array.concat(scope), ~gen?) {
+          switch Judgment.parse(cur.contents, ~grammar, ~scope=vars->Array.concat(scope), ~gen?) {
           | Ok(conclusion, rest) =>
             if rest->String.trim->String.get(0) == Some("]") {
               cur := rest->String.trim->String.sliceToEnd(~start=1)
@@ -132,13 +132,13 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       | v => v
       }
     } else {
-      switch Judgment.parse(string, ~scope, ~gen?) {
+      switch Judgment.parse(string, ~grammar, ~scope, ~gen?) {
       | Ok(conclusion, rest) => Ok(({vars: [], premises: [], conclusion}, rest))
       | Error(e) => Error(e)
       }
     }
   }
-  let parseTopLevel = (string, ~gen=?, ~scope=[]) => {
+  let parseTopLevel = (string, ~grammar: Term.grammar, ~gen=?, ~scope=[]) => {
     let cur = ref(String.make(string))
     let it = ref(Error(""))
     let vars = []
@@ -157,7 +157,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
         it := parseVinculum(cur.contents)
         it.contents->Result.isError
       } {
-        switch parseInner(cur.contents, ~scope=vars->Array.concat(scope), ~gen?) {
+        switch parseInner(cur.contents, ~grammar, ~scope=vars->Array.concat(scope), ~gen?) {
         | Ok(p, rest) => {
             cur := rest
             premises->Array.push(p)
@@ -167,7 +167,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       }
       let (ruleName, rest) = it.contents->Result.getExn
       cur := rest
-      switch Judgment.parse(cur.contents, ~scope=vars->Array.concat(scope), ~gen?) {
+      switch Judgment.parse(cur.contents, ~grammar, ~scope=vars->Array.concat(scope), ~gen?) {
       | Ok(conclusion, rest) => Ok((({vars, premises, conclusion}, ruleName), rest))
       | Error(e) => Error(e)
       }
@@ -177,9 +177,9 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
 
-  let rec prettyPrintInline = (rule: t, ~scope=[]: array<Term.meta>) => {
+  let rec prettyPrintInline = (rule: t, ~grammar : Term.grammar, ~scope=[]: array<Term.meta>) => {
     switch rule {
-    | {vars: [], premises: [], conclusion: c} => Judgment.prettyPrint(c, ~scope)
+    | {vars: [], premises: [], conclusion: c} => Judgment.prettyPrint(c, ~grammar, ~scope)
     | _ => {
         let vars' = Array.copy(rule.vars)
         Array.reverse(vars')
@@ -191,14 +191,14 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
           ->String.concat(" ")
           ->String.concat(
             if Array.length(rule.premises) == 0 {
-              Judgment.prettyPrint(rule.conclusion, ~scope=[...rule.vars, ...scope])
+              Judgment.prettyPrint(rule.conclusion, ~grammar, ~scope=[...rule.vars, ...scope])
             } else {
               rule.premises
-              ->Array.map(r => prettyPrintInline(r, ~scope=[...rule.vars, ...scope]))
+              ->Array.map(r => prettyPrintInline(r, ~grammar, ~scope=[...rule.vars, ...scope]))
               ->Array.join(" ")
               ->String.concat(" |- ")
               ->String.concat(
-                Judgment.prettyPrint(rule.conclusion, ~scope=[...rule.vars, ...scope]),
+                Judgment.prettyPrint(rule.conclusion, ~grammar, ~scope=[...rule.vars, ...scope]),
               )
             },
           ),
@@ -207,7 +207,7 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
       }
     }
   }
-  let prettyPrintTopLevel = (rule: t, ~name="", ~scope=[]: array<Term.meta>) => {
+  let prettyPrintTopLevel = (rule: t, ~name="", ~grammar, ~scope=[]: array<Term.meta>) => {
     let vinculise = (strs: array<string>) => {
       let l = strs->Array.map(String.length)->Array.concat([4])->Math.Int.maxMany
       strs->Array.concat(["-"->String.repeat(l)->String.concat(" ")->String.concat(name)])
@@ -223,9 +223,9 @@ module Make = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     ->String.concat(Util.newline)
     ->String.concat(
       rule.premises
-      ->Array.map(r => prettyPrintInline(r, ~scope=[...rule.vars, ...scope]))
+      ->Array.map(r => prettyPrintInline(r, ~grammar, ~scope=[...rule.vars, ...scope]))
       ->vinculise
-      ->Array.concat([Judgment.prettyPrint(rule.conclusion, ~scope=[...rule.vars, ...scope])])
+      ->Array.concat([Judgment.prettyPrint(rule.conclusion, ~grammar, ~scope=[...rule.vars, ...scope])])
       ->Array.map(s => String.concat("  ", s))
       ->Array.join(Util.newline),
     )

@@ -127,17 +127,19 @@ module type PROOF_METHOD = {
   let parse: (
     string,
     ~keyword: string,
+    ~grammar: Term.grammar,
     ~scope: array<Term.meta>,
     ~assms: array<string>,
     ~gen: Term.gen,
-    ~subparser: (string, ~scope: array<Term.meta>, ~assms: array<string>, ~gen: Term.gen) => result<('a, string), string>,
+    ~subparser: (string, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~gen: Term.gen) => result<('a, string), string>,
   ) => result<(t<'a>, string), string>
   let prettyPrint: (
     t<'a>,
+    ~grammar: Term.grammar,
     ~scope: array<Term.meta>,
     ~assms: array<string>,
     ~indentation: int=?,
-    ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+    ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
   ) => string
 }
 
@@ -169,9 +171,9 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   }
   exception InternalParseError(string)
   let keywords = ["by"]
-  let prettyPrint = (it: t<'a>,~scope,~assms: array<string>,~indentation=0,
-    ~subprinter : ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string) => {
-    let args = it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope))
+  let prettyPrint = (it: t<'a>,~grammar,~scope,~assms: array<string>,~indentation=0,
+    ~subprinter : ('a, ~grammar:Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string) => {
+    let args = it.instantiation->Array.map(t => Term.prettyPrint(t, ~grammar, ~scope))
     "by ("
     ->String.concat(Array.join([RuleRef.prettyPrint(it.ruleName,~assms)]->Array.concat(args), " "))
     ->String.concat(") {")
@@ -184,13 +186,13 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     )
     ->String.concat(
       it.subgoals
-      ->Array.map(s => subprinter(s, ~scope,~assms, ~indentation=indentation + 2))
+      ->Array.map(s => subprinter(s, ~grammar, ~scope,~assms, ~indentation=indentation + 2))
       ->Array.join(newline),
     )
     ->String.concat("}")
   }
   
-  let parse = (input, ~keyword as _, ~scope, ~assms, ~gen, ~subparser) => {
+  let parse = (input, ~keyword as _, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
     let cur = ref(String.trim(input))
     if cur.contents->String.get(0) == Some("(") {
       switch RuleRef.parse(String.trim(cur.contents->String.sliceToEnd(~start=1)),~assms) {
@@ -199,7 +201,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Term.parse(cur.contents, ~scope, ~gen)
+            it := Term.parse(cur.contents, ~grammar, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -213,7 +215,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
               cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
               try {
                 while cur.contents->String.get(0) != Some("}") {
-                  switch subparser(cur.contents, ~scope, ~assms, ~gen) {
+                  switch subparser(cur.contents, ~grammar,~scope, ~assms, ~gen) {
                   | Ok((sg, rest)) => {
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
@@ -280,7 +282,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
                         // pollute TERM with another method for printing bare meta
                         let metaWithoutDot =
                           metaS->String.slice(~start=0, ~end=String.length(metaS) - 1)
-                        `${metaWithoutDot} ↦ ${Term.prettyPrint(x, ~scope=ctx.fixes)}`
+                        `${metaWithoutDot} ↦ ${Term.prettyPrint(x, ~grammar=Term.emptyGrammar, ~scope=ctx.fixes)}`
                       },
                     )
                     ->Array.join(", ")
@@ -295,7 +297,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let keyName = RuleRef.prettyPrint(it.ruleName, ~assms=ctx.localFactNames);
     switch ctx->Context.lookup(it.ruleName) {
-    | None => Error("Cannot find rule `keyName`")
+    | None => Error(`Cannot find rule '${keyName}'`)
     | Some(rule) if Array.length(rule.vars) == Array.length(it.instantiation) => {
         let {premises, conclusion} = Rule.instantiate(rule, it.instantiation)
         if Judgment.equivalent(Judgment.reduce(conclusion), Judgment.reduce(j)) {
@@ -309,8 +311,8 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
             Error("Incorrect number of subgoals")
           }
         } else {
-          let concString = Judgment.prettyPrint(conclusion, ~scope=ctx.fixes)
-          let goalString = Judgment.prettyPrint(j, ~scope=ctx.fixes)
+          let concString = Judgment.prettyPrint(conclusion, ~grammar=Term.emptyGrammar, ~scope=ctx.fixes)
+          let goalString = Judgment.prettyPrint(j, ~grammar=Term.emptyGrammar, ~scope=ctx.fixes)
           Error(
             "Conclusion of rule '"
             ->String.concat(concString)
@@ -344,10 +346,11 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
   let keywords = ["elim"]
   let prettyPrint = (
     it: t<'a>,
+    ~grammar,
     ~scope,
     ~assms,
     ~indentation=0,
-    ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+    ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
   ) => {
     let subgoalsSpacer = if Array.length(it.subgoals) > 0 {
       newline
@@ -358,12 +361,12 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     let ruleName = RuleRef.prettyPrint(it.ruleName, ~assms)
     let elimName = RuleRef.prettyPrint(it.elimName, ~assms)
     let instantiation = Array.join(
-      it.instantiation->Array.map(t => Term.prettyPrint(t, ~scope)),
+      it.instantiation->Array.map(t => Term.prettyPrint(t, ~grammar, ~scope)),
       " ",
     )    
     let subgoalsStr =
       it.subgoals
-      ->Array.map(s => subprinter(s, ~scope, ~assms, ~indentation=indentation + 2))
+      ->Array.map(s => subprinter(s, ~grammar, ~scope, ~assms, ~indentation=indentation + 2))
       ->Array.join(newline)
     `elim (${ruleName} ${elimName} ${instantiation}) {${subgoalsSpacer}${subgoalsStr}}`
   }
@@ -386,7 +389,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     }
   }
 
-  let parse = (input, ~keyword as _, ~scope, ~assms, ~gen, ~subparser) => {
+  let parse = (input, ~keyword as _, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
     let cur = ref(String.trim(input))
     if cur.contents->String.get(0) == Some("(") {
 
@@ -400,7 +403,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Term.parse(cur.contents, ~scope, ~gen)
+            it := Term.parse(cur.contents, ~grammar, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -414,7 +417,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
               cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
               try {
                 while cur.contents->String.get(0) != Some("}") {
-                  switch subparser(cur.contents, ~scope, ~assms, ~gen) {
+                  switch subparser(cur.contents, ~grammar, ~scope, ~assms, ~gen) {
                   | Ok((sg, rest)) => {
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
@@ -462,8 +465,8 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
         } else if !Judgment.equivalent(Judgment.reduce(elimPremise.conclusion), Judgment.reduce(elim.conclusion)) {
           Error(`Premise to eliminate and elimination motive (?) ${elimNameS} do not match`)
         } else if !Judgment.equivalent(Judgment.reduce(conclusion), Judgment.reduce(j)) {
-          let concString = Judgment.prettyPrint(conclusion, ~scope=ctx.fixes)
-          let goalString = Judgment.prettyPrint(j, ~scope=ctx.fixes)
+          let concString = Judgment.prettyPrint(conclusion, ~grammar=Term.emptyGrammar, ~scope=ctx.fixes)
+          let goalString = Judgment.prettyPrint(j, ~grammar=Term.emptyGrammar, ~scope=ctx.fixes)
           Error(`Conclusion of rule '${concString}' doesn't match goal '${goalString}'`)
         } else if Array.length(it.subgoals) != Array.length(remainingPremises) {
           let subgoalsRem = Array.length(it.subgoals)->Int.toString
@@ -570,25 +573,26 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let keywords = ["have"]
   let prettyPrint = (
     it: t<'a>,
+    ~grammar,
     ~scope,
     ~assms,
     ~indentation=0,
-    ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+    ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
   ) => {
     "have "
-    ->String.concat(Rule.prettyPrintInline(it.rule, ~scope))
+    ->String.concat(Rule.prettyPrintInline(it.rule, ~grammar, ~scope))
     ->String.concat(newline)
-    ->String.concat(subprinter(it.proof, ~scope, ~assms,~indentation))
+    ->String.concat(subprinter(it.proof, ~grammar, ~scope, ~assms,~indentation))
     ->String.concat(newline)
-    ->String.concat(subprinter(it.show, ~scope, ~assms, ~indentation))
+    ->String.concat(subprinter(it.show, ~grammar, ~scope, ~assms, ~indentation))
   }
-  let parse = (input, ~keyword as _, ~scope, ~assms, ~gen, ~subparser) => {
+  let parse = (input, ~keyword as _, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
     //todo add toplevel
-    switch Rule.parseInner(input, ~scope, ~gen) {
+    switch Rule.parseInner(input, ~grammar, ~scope, ~gen) {
     | Ok((rule, rest)) =>
-      switch subparser(rest, ~scope, ~assms, ~gen) {
+      switch subparser(rest, ~grammar, ~scope, ~assms, ~gen) {
       | Ok((proof, rest')) =>
-        switch String.trim(rest')->subparser(~scope, ~assms, ~gen) {
+        switch String.trim(rest')->subparser(~grammar, ~scope, ~assms, ~gen) {
         | Ok((show, rest'')) => Ok({rule, proof, show}, rest'')
         | Error(e) => Error(e)
         }
@@ -640,19 +644,19 @@ module Combine = (
     | First(m) => m->Method1.check(ctx, j, f)->Result.map(x => First(x))
     | Second(m) => m->Method2.check(ctx, j, f)->Result.map(x => Second(x))
     }
-  let prettyPrint = (it: t<'a>, ~scope, ~assms, ~indentation=0, ~subprinter) =>
+  let prettyPrint = (it: t<'a>, ~grammar, ~scope, ~assms, ~indentation=0, ~subprinter) =>
     switch it {
-    | First(m) => m->Method1.prettyPrint(~scope, ~assms, ~indentation, ~subprinter)
-    | Second(m) => m->Method2.prettyPrint(~scope, ~assms, ~indentation, ~subprinter)
+    | First(m) => m->Method1.prettyPrint(~grammar, ~scope, ~assms, ~indentation, ~subprinter)
+    | Second(m) => m->Method2.prettyPrint(~grammar, ~scope, ~assms, ~indentation, ~subprinter)
     }
-  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) => {
+  let parse = (input, ~keyword, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
     if Method1.keywords->Array.indexOf(keyword) > -1 {
-      Method1.parse(input, ~keyword, ~scope, ~assms, ~gen, ~subparser)->Result.map(((x, r)) => (
+      Method1.parse(input, ~keyword, ~grammar, ~scope, ~assms, ~gen, ~subparser)->Result.map(((x, r)) => (
         First(x),
         r,
       ))
     } else {
-      Method2.parse(input, ~keyword, ~scope, ~assms, ~gen, ~subparser)->Result.map(((x, r)) => (
+      Method2.parse(input, ~keyword, ~grammar, ~scope, ~assms, ~gen, ~subparser)->Result.map(((x, r)) => (
         Second(x),
         r,
       ))

@@ -7,7 +7,7 @@ module Make = (
 ): {
   include Signatures.TERM_VIEW with module Term := SExp
 } => {
-  type props = {term: SExp.t, scope: array<string>}
+  type props = {term: SExp.t, grammar: unit, scope: array<string>}
   open Util
   type idx_props = {idx: int, scope: array<string>}
   let viewVar = (props: idx_props) =>
@@ -30,6 +30,7 @@ module Make = (
     let handleConfirm = s => switch SExp.parseMeta(String.trim(s)) {
       | Ok((s',"")) => {onChange(s'); Ok(())}
       | Error(e) => Error(e)
+      | Ok((_,rest)) => Error(`Trailing text: ${rest}`)
       }
     <span className="rule-binder">
       <UIWidgets.EditableLabel label={str} onConfirm={handleConfirm} />

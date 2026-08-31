@@ -12,6 +12,7 @@ module Make = (
   type state = {
     raw: dict<Rule.t>,
     derived: dict<Rule.t>,
+    grammar: Term.grammar
   }
 
   type props = {
@@ -136,14 +137,14 @@ module Make = (
     }
   }
 
-  let deserialise = (str: string, ~imports as _: Ports.t) => {
+  let deserialise = (str: string, ~imports: Ports.t) => {
     let getBase = (str: string) => {
       let cur = ref(str)
       let go = ref(true)
       let results = Dict.make()
       let ret = ref(Error("impossible"))
       while go.contents {
-        switch Rule.parseTopLevel(cur.contents, ~scope=[]) {
+        switch Rule.parseTopLevel(cur.contents, ~grammar=imports.grammar,  ~scope=[]) {
         | Ok((t, n), rest) =>
           if n->String.trim == "" {
             go := false
@@ -187,14 +188,14 @@ module Make = (
           derived->Dict.set(`${group.name}_mutualInduct`, derive(group, mentionedGroups))
         }
       })
-      ({raw, derived}, {Ports.facts: raw->Dict.copy->Dict.assign(derived), ruleStyle: None})
+      ({raw, derived, grammar: imports.grammar}, {Ports.facts: raw->Dict.copy->Dict.assign(derived), ruleStyle: None, grammar: Term.emptyGrammar})
     })
   }
 
   let serialise = (state: state) => {
     state.raw
     ->Dict.toArray
-    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))
+    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=state.grammar))
     ->Array.join("\n")
   }
 
@@ -210,6 +211,7 @@ module Make = (
         ->Array.mapWithIndex(((n, r), i) =>
           <RuleView
             rule={r}
+            grammar={props.content.grammar}
             scope={[]}
             key={String.make(i)}
             style={props.imports.ruleStyle->Option.getOr(Hybrid)}

@@ -52,8 +52,9 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
             let (lhs, rhs) = orient(step.direction, eqLhs, eqRhs)
             let lhs' = Term.upshift(lhs, localScope->Array.length)
             if !Term.equivalent(lhs', subterm) {
-              Error(`instantiated left-hand side (${lhs'->Term.prettyPrint(~scope=context.fixes)}) 
-                     does not match the term at the given path (${subterm->Term.prettyPrint(~scope=context.fixes)})`)
+              Error(`instantiated left-hand side (${lhs'->Term.prettyPrint(~grammar=Term.emptyGrammar,~scope=context.fixes)}) 
+                     does not match the term at the given path 
+                     (${subterm->Term.prettyPrint(~grammar=Term.emptyGrammar, ~scope=context.fixes)})`)
             } else {
               let newGoal = Judgment.replaceAt(goal, step.path, Term.reduce(Term.upshift(rhs, localScope->Array.length)))
               if Array.length(premises) != Array.length(step.subgoals) {
@@ -146,12 +147,13 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
   let prettyPrint = (
       it: t<'a>,
+      ~grammar,
       ~scope,
       ~assms,
       ~indentation=0,
-      ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+      ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
     ) => {
-      let args = it.values->Array.map(t => Term.prettyPrint(t, ~scope))
+      let args = it.values->Array.map(t => Term.prettyPrint(t, ~grammar, ~scope))
       (if it.direction == Backward { "rev_rewrite" } else { "rewrite" })
       ->String.concat(" (")
       ->String.concat(Array.join([Method.RuleRef.prettyPrint(it.ruleName,~assms)]->Array.concat(args), " "))
@@ -167,18 +169,18 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
       )
       ->String.concat(
         it.subgoals
-        ->Array.map(s => subprinter(s, ~scope, ~assms, ~indentation=indentation + 2))
+        ->Array.map(s => subprinter(s, ~grammar, ~scope, ~assms, ~indentation=indentation + 2))
         ->Array.join(Util.newline),
       )
       ->String.concat("}")
       ->String.concat(Util.newline)
-      ->String.concat(subprinter(it.newGoal,~scope, ~assms, ~indentation))
+      ->String.concat(subprinter(it.newGoal, ~grammar, ~scope, ~assms, ~indentation))
       ->String.concat(Util.newline)
     }
 
   exception InternalParseError(string)
 
-  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) => {
+  let parse = (input, ~keyword, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
     let direction = if keyword == "rev_rewrite" { Backward } else { Forward }  
     let cur = ref(String.trim(input))
     if cur.contents->String.get(0) == Some("(") {
@@ -188,7 +190,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
           let instantiation = []
           let it = ref(Error(""))
           while {
-            it := Term.parse(cur.contents, ~scope, ~gen)
+            it := Term.parse(cur.contents, ~grammar, ~scope, ~gen)
             it.contents->Result.isOk
           } {
             let (val, rest) = it.contents->Result.getExn
@@ -204,7 +206,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
               cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
               try {
                 while cur.contents->String.get(0) != Some("}") {
-                  switch subparser(cur.contents, ~scope, ~assms, ~gen) {
+                  switch subparser(cur.contents, ~grammar, ~scope, ~assms, ~gen) {
                   | Ok((sg, rest)) => {
                       Array.push(subgoals, sg)
                       cur := String.trim(rest)
@@ -214,7 +216,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
                 }
                 if cur.contents->String.get(0) == Some("}") {
                   cur := String.trim(cur.contents->String.sliceToEnd(~start=1))
-                  switch subparser(cur.contents, ~scope, ~assms, ~gen) {
+                  switch subparser(cur.contents, ~grammar, ~scope, ~assms, ~gen) {
                   | Ok ((newGoal, rest)) => {
                       cur := String.trim(rest)
                       Ok(({ruleName, direction, values:instantiation, path, newGoal, subgoals}, cur.contents))

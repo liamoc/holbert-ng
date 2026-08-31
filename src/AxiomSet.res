@@ -8,7 +8,7 @@ module Make = (
   module Rule = Rule.Make(Term, Judgment)
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
-  type state = dict<Rule.t>
+  type state = { rules: dict<Rule.t>, grammar: Term.grammar }
   type props = {
     content: state,
     imports: Ports.t,
@@ -17,18 +17,18 @@ module Make = (
   }
 
   let serialise = (state: state) => {
-    state
+    state.rules
     ->Dict.toArray
-    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k))
+    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=state.grammar))
     ->Array.join("\n")
   }
-  let deserialise = (str: string, ~imports as _: Ports.t) => {
+  let deserialise = (str: string, ~imports: Ports.t) => {
     let cur = ref(str)
     let go = ref(true)
     let results = Dict.make()
     let ret = ref(Error("impossible"))
     while go.contents {
-      switch Rule.parseTopLevel(cur.contents, ~scope=[]) {
+      switch Rule.parseTopLevel(cur.contents, ~grammar=imports.grammar, ~scope=[]) {
       | Ok((t, n), rest) =>
         if n->String.trim == "" {
           go := false
@@ -48,7 +48,9 @@ module Make = (
         }
       }
     }
-    ret.contents->Result.map(state => (state, {Ports.facts: state, ruleStyle: None}))
+    ret.contents->Result.map(state => (
+      {rules: state, grammar: imports.grammar }, 
+      {Ports.facts: state, ruleStyle: None, grammar: Term.emptyGrammar}))
   }
 
   let make = props => {
@@ -57,10 +59,11 @@ module Make = (
         String.make(props.imports.ruleStyle->Option.getOr(Hybrid)),
       )}
     >
-      {Dict.toArray(props.content)
+      {Dict.toArray(props.content.rules)
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
+          grammar={props.content.grammar}
           scope={[]}
           key={String.make(i)}
           style={props.imports.ruleStyle->Option.getOr(Hybrid)}

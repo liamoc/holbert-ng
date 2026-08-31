@@ -84,7 +84,7 @@ module type CAN_UNIFY = {
   let unify: (t, t, ~gen: gen=?) => Seq.t<subst>
   let substEqual: (subst, subst) => bool
   let prettyPrint: (t, ~scope: array<meta>) => string
-  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
+//  let prettyPrintSubst: (subst, ~scope: array<meta>) => string
 }
 
 module MakeUnifyTester = (Subj: CAN_UNIFY) => {
@@ -102,7 +102,7 @@ module MakeUnifyTester = (Subj: CAN_UNIFY) => {
         let noMatches =
           expect
           ->Seq.filter(sub1 => Seq.find(res, sub2 => Subj.substEqual(sub1, sub2))->Option.isNone)
-          ->Seq.map(t => Subj.prettyPrintSubst(t, ~scope=[]))
+          //->Seq.map(t => Subj.prettyPrintSubst(t, ~scope=[]))
           ->Seq.toArray
         let msg =
           msg->Option.getOr("each substitution in `expect` should have a match in solutions")
@@ -144,8 +144,6 @@ module MakeAtomTester = (Atom: SExp.ATOM) => {
     include Atom
     type meta = string
     type gen = ref<int>
-    let prettyPrintSubst = (sub, ~scope) =>
-      Util.prettyPrintMap(sub, ~showV=t => prettyPrint(t, ~scope))
     let substEqual = Util.mapEqual
   }
   module UnifyTester = MakeUnifyTester(UnifyWrapper)
@@ -167,7 +165,7 @@ module MakeTerm = (Term: TERM) => {
     ~msg=?,
     ~expectRemaining=?,
   ) => {
-    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
+    let res = Term.parse(input, ~grammar=Term.emptyGrammar, ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok((parsed, parsedRemaining)) => {
         t->equal(
@@ -183,12 +181,12 @@ module MakeTerm = (Term: TERM) => {
     }
   }
   let testParseFail = (t: Zora.t, input: string, ~scope=[]) => {
-    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
+    let res = Term.parse(input,~grammar=Term.emptyGrammar,  ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok((p, remaining)) =>
       t->fail(
         ~msg=`parse intended to fail, but succeeded: ${Term.prettyPrint(
-            p,
+            p,~grammar=Term.emptyGrammar, 
             ~scope,
           )}\nremaining: ${remaining}`,
       )
@@ -196,18 +194,18 @@ module MakeTerm = (Term: TERM) => {
     }
   }
   let testParsePrettyPrint = (t: Zora.t, input, expected, ~scope=[]) => {
-    let res = Term.parse(input, ~scope=[], ~gen=Term.makeGen())
+    let res = Term.parse(input, ~grammar=Term.emptyGrammar, ~scope=[], ~gen=Term.makeGen())
 
     switch res {
     | Ok(res) => {
-        let result = Term.prettyPrint(res->Pair.first, ~scope)
+        let result = Term.prettyPrint(res->Pair.first, ~grammar=Term.emptyGrammar,  ~scope)
         t->equal(result, expected, ~msg="prettyPrint output matches expected")
       }
     | Error(msg) => t->fail(~msg="parse failed: " ++ msg)
     }
   }
   let parse = (t: Zora.t, input: string, ~scope=[]): Term.t => {
-    let res = Term.parse(input, ~scope, ~gen=Term.makeGen())
+    let res = Term.parse(input, ~grammar=Term.emptyGrammar,  ~scope, ~gen=Term.makeGen())
     switch res {
     | Ok((term, "")) => term
     | Ok((_, rest)) => {
@@ -222,8 +220,8 @@ module MakeTerm = (Term: TERM) => {
   }
   let testUnify1 = (t: Zora.t, at: string, bt: string, ~subst=?, ~msg=?) => {
     let gen = Term.makeGen()
-    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
-    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    let (a, _) = Term.parse(at, ~grammar=Term.emptyGrammar, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~grammar=Term.emptyGrammar, ~scope=[], ~gen)->Result.getExn
     let res = Term.unify(a, b, ~gen)
     if res->Seq.length == 0 {
       t->fail(~msg="unification failed: " ++ stringifyExn(a) ++ " and " ++ stringifyExn(b))
@@ -242,8 +240,9 @@ module MakeTerm = (Term: TERM) => {
     }
   }
 
-  let substArrayPrettyPrint = (ss: array<Term.subst>) => {
-    ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
+  let substArrayPrettyPrint = (_ss: array<Term.subst>) => {
+    ""
+   // ss->Array.map(t => Term.prettyPrintSubst(t, ~scope=[]))->Util.showArray
   }
 
   let testUnify = (
@@ -260,7 +259,7 @@ module MakeTerm = (Term: TERM) => {
         let noMatches =
           expect
           ->Seq.filter(sub1 => Seq.find(res, sub2 => Term.substEqual(sub1, sub2))->Option.isNone)
-          ->Seq.map(t => Term.prettyPrintSubst(t, ~scope=[]))
+          ->Seq.map(_ => "")
           ->Seq.toArray
         let msg =
           msg->Option.getOr("each substitution in `expect` should have a match in solutions")
@@ -284,8 +283,8 @@ module MakeTerm = (Term: TERM) => {
 
   let testUnifyFailString = (t: Zora.t, at: string, bt: string, ~msg=?) => {
     let gen = Term.makeGen()
-    let (a, _) = Term.parse(at, ~scope=[], ~gen)->Result.getExn
-    let (b, _) = Term.parse(bt, ~scope=[], ~gen)->Result.getExn
+    let (a, _) = Term.parse(at, ~grammar=Term.emptyGrammar, ~scope=[], ~gen)->Result.getExn
+    let (b, _) = Term.parse(bt, ~grammar=Term.emptyGrammar, ~scope=[], ~gen)->Result.getExn
     testUnifyFail(t, a, b, ~msg?)
   }
 }

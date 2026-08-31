@@ -16,6 +16,7 @@ module Make = (
   module Ports = Ports(Term, Judgment)
   type state = {
     name: string,
+    grammar: Term.grammar,
     rule: Rule.t,
     proof: Proof.t,
     gen: Term.gen,
@@ -29,25 +30,25 @@ module Make = (
   }
   let serialise = (state: state) => {
     state.rule
-    ->Rule.prettyPrintTopLevel(~name=state.name)
+    ->Rule.prettyPrintTopLevel(~name=state.name,~grammar=state.grammar)
     ->String.concat("\n\n")
-    ->String.concat(Proof.prettyPrint(state.proof, ~scope=[], ~assms=[]))
+    ->String.concat(Proof.prettyPrint(state.proof, ~grammar=state.grammar, ~scope=[], ~assms=[]))
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
     let _facts = imports.facts
     let gen = Term.makeGen()
     let cur = ref(str)
-    switch Rule.parseTopLevel(cur.contents, ~scope=[], ~gen) {
+    switch Rule.parseTopLevel(cur.contents, ~grammar=imports.grammar, ~scope=[], ~gen) {
     | Error(e) => Error(e)
     | Ok(((rule, name), s)) =>
-      switch Proof.parse(s, ~scope=[], ~assms=[], ~gen) {
+      switch Proof.parse(s, ~grammar=imports.grammar, ~scope=[], ~assms=[], ~gen) {
       | Error(e) => Error(e)
       | Ok((_, s')) if String.length(String.trim(s')) > 0 =>
         Error("Trailing input: "->String.concat(s'))
       | Ok((proof, _)) =>
         Ok((
-          {name, rule, proof, gen, substFailed: None},
-          {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None},
+          {name, rule, proof, gen, substFailed: None, grammar: imports.grammar},
+          {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None, grammar: Term.emptyGrammar},
         ))
       }
     }
@@ -69,17 +70,18 @@ module Make = (
         ~exports={
           Ports.facts: Dict.fromArray([(props.content.name, props.content.rule)]),
           ruleStyle: None,
+          grammar: Term.emptyGrammar,
         },
       )
-    }
-
+    }    
+    Console.log(props.content.grammar);
     <SidebarContext sidebarRef>
-      <RuleView rule={props.content.rule} scope={[]} style={ruleStyle}>
+      <RuleView rule={props.content.rule} grammar={props.content.grammar} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
       </RuleView>
       <h4> {React.string("Proof")} </h4>
       <ProofView
-        ruleStyle={ruleStyle} ctx={ctx} proof=checked gen={props.content.gen} onChange=proofChanged
+        ruleStyle={ruleStyle} ctx={ctx} grammar={props.content.grammar} proof=checked gen={props.content.gen} onChange=proofChanged
       />
       {switch props.content.substFailed {
       | Some(msg) => React.string(msg)

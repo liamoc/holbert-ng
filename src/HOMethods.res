@@ -64,16 +64,17 @@ module ConstructorDisjointness = {
     )
   let prettyPrint = (
       it: t<'a>,
-      ~scope,
+      ~grammar as _,
+      ~scope as _,
       ~assms,
-      ~indentation=0,
-      ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+      ~indentation as _=0,
+      ~subprinter as _: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
     ) => 
       "disjointness "
       ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
       ->String.concat(Util.newline)
 
-  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) =>
+  let parse = (input, ~keyword as _, ~grammar as _, ~scope as _, ~assms, ~gen as _, ~subparser as _) =>
     switch Method.RuleRef.parse(String.trim(input),~assms) {
     | Ok((ruleName, rest)) => Ok(({factName: ruleName},rest))
     | _ => Error("Expected fact name")
@@ -169,22 +170,23 @@ module ConstructorInjectivity = {
    
   let prettyPrint = (
         it: t<'a>,
+        ~grammar,
         ~scope,
         ~assms,
         ~indentation=0,
-        ~subprinter: ('a, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
+        ~subprinter: ('a, ~grammar: Term.grammar, ~scope: array<Term.meta>, ~assms: array<string>, ~indentation: int=?) => string,
       ) =>
       "injectivity "
       ->String.concat(Method.RuleRef.prettyPrint(it.factName, ~assms))
       ->String.concat(Util.newline)
-      ->String.concat(subprinter(it.subgoal, ~scope, ~assms, ~indentation))
+      ->String.concat(subprinter(it.subgoal, ~grammar, ~scope, ~assms, ~indentation))
       ->String.concat(Util.newline)
   exception InternalParseError(string)
     
-  let parse = (input, ~keyword, ~scope, ~assms, ~gen, ~subparser) => {
+  let parse = (input, ~keyword as _, ~grammar, ~scope, ~assms, ~gen, ~subparser) => {
     switch Method.RuleRef.parse(String.trim(input),~assms) {
     | Ok((ruleName, rest)) => {
-        switch subparser(String.trim(rest), ~scope, ~assms, ~gen) {
+        switch subparser(String.trim(rest), ~grammar, ~scope, ~assms, ~gen) {
         | Ok((sg, rest)) =>
             Ok(({subgoal:sg, factName:ruleName}, rest))
         | Error(e) => Error(e)
