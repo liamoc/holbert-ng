@@ -460,11 +460,11 @@ let rec replaceAtFrom = (term: t, path: path, i: int, replacement: t): t =>
 let replaceAt = (term, path, replacement) => replaceAtFrom(term, path, 0, replacement)
 
 let mkEquation = (a, b) =>
-  App({func: App({func: Symbol({name: "=", constructor: false}), arg: a}), arg: b})
+  App({func: App({func: Symbol({name: "_=_", constructor: false}), arg: a}), arg: b})
 
 let asEquation = (t: t): option<(t, t)> =>
   switch t {
-  | App({func: App({func: Symbol({name: "=", constructor: false}), arg: a}), arg: b}) => Some((a, b))
+  | App({func: App({func: Symbol({name: "_=_", constructor: false}), arg: a}), arg: b}) => Some((a, b))
   | _ => None
   }
   
@@ -511,7 +511,10 @@ let parsePath = (str:string) => {
   }
 }
 
-let emptyGrammar = MixfixGrammar.emptyCompiled
+let emptyGrammar = MixfixGrammar.compile(
+      MixfixGrammar.opFromName("eq", "_=_", ~assoc=NonAssoc)
+    )->Result.getOr(MixfixGrammar.emptyCompiled)
+
 let combineGrammars = MixfixGrammar.combine
 
 module ParseLeaf: MixfixParser.PARSE_LEAF

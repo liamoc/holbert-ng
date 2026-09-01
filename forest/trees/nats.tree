@@ -5,10 +5,10 @@
   \hol/dep{config}{config}
 }{
   ---- Z
-  (Nat 0)
+  (Nat @0)
   
 n.
   (Nat n)
   ------- S
-  (Nat (S n))
+  (Nat (@S n))
 }

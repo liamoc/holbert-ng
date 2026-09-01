@@ -20,12 +20,19 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let summary = props => <span>{React.string("rw ")}<MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames /></span>
+  let summary = props => <span className="rule-rulename-rewrite">
+    <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
+    <sup>{
+      switch props.method.direction {
+      | Method.Forward => React.string("→")
+      | Method.Backward => React.string("←")
+      }
+    }</sup>
+    </span>
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
-        <b> {React.string("rewrite ")} </b>
-        <MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
+        <span className="typcn typcn-media-play"></span>{summary(props)}
         {
           if props.method.subgoals->Array.length > 0 { 
             <ul className="subgoals">

@@ -3,7 +3,8 @@ open MethodView
 
 @send external closest: ({..}, string) => Nullable.t<Dom.element> = "closest"
 @send external focus: {..} => unit = "focus"
-
+@send external addEventListener: (Dom.element, string, Dom.event => unit) => unit = "addEventListener"
+@send external removeEventListener: (Dom.element, string, Dom.event => unit) => unit = "removeEventListener"
 module Make = (
   Term: TERM,
   Judgment: JUDGMENT with module Term := Term,
@@ -15,84 +16,99 @@ module Make = (
   module Proof = Proof.Make(Term, Judgment, MethodView.Method)
   module Results = Method.MethodResults(Term)
   module ResultsView = {
-    type menuState<'a> = {
-      history: list<array<Results.t<MethodView.Method.t<Proof.checked>>>>, // Stack of previous menus
-      current: array<Results.t<MethodView.Method.t<Proof.checked>>>, // What is currently visible
-    }
+    type level<'a> = {label: option<string>, nodes: array<Results.t<'a>>}
     type props = {
       initialNodes: array<Results.t<MethodView.Method.t<Proof.checked>>>,
       onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
-      onBlur: ReactEvent.Focus.t => unit,
+      //onBlur: ReactEvent.Focus.t => unit,
     }
+
     @react.componentWithProps
     let make = (props: props) => {
-      let (state, setState) = React.useState(_ => {
-        history: list{},
-        current: props.initialNodes,
-      })
+      let (path, setPath) = React.useState(() => [{label: None, nodes: props.initialNodes}])
 
-      let goBack = _ => {
-        setState(prev => {
-          switch prev.history {
-          | list{parent, ...rest} => {current: parent, history: rest}
-          | list{} => prev // Already at the root
-          }
-        })
-      }
+      let drillDown = (label, newNodes) =>
+        setPath(prev => Array.concat(prev, [{label: Some(label), nodes: newNodes}]))
 
-      let drillDown = (newNodes: array<Results.t<'a>>) => {
-        setState(prev => {
-          history: list{prev.current, ...prev.history},
-          current: newNodes,
-        })
-      }
+      let goBack = _ =>
+        setPath(prev => Array.length(prev) > 1 ? Array.slice(prev, ~start=0, ~end=Array.length(prev) - 1) : prev)
+
+      let current = path->Belt.Array.getExn(Array.length(path) - 1)
 
       <div className="drill-down-container">
-        {state.history != list{}
-          ? <button tabIndex=0 onBlur={props.onBlur} onClick={goBack} className="back-button">
+        <div className="breadcrumbs">
+          {path
+          ->Array.filterMap(lvl => lvl.label)
+          ->Array.mapWithIndex((label, i) =>
+            <div key={Int.toString(i)} className="breadcrumb-heading"> {React.string(label)} </div>
+          )
+          ->React.array}
+        </div>
+        {Array.length(path) > 1
+          ? <button tabIndex=0 onClick={goBack} className="back-button">
               {React.string("← Back")}
             </button>
           : React.null}
-
         <div className="menu-options">
-          {state.current
-          ->Array.mapWithIndex((node, i) => {
+          {current.nodes
+          ->Array.mapWithIndex((node, i) =>
             switch node {
             | Action(label, nextTree, subst) =>
               <button
-                tabIndex=0
-                onBlur={props.onBlur}
-                key={label ++ i->Int.toString}
-                onClick={_ => props.onApply(nextTree, subst)}
-              >
-                {React.string(label ++ "")}
+                tabIndex=0 key={label ++ i->Int.toString}
+                onClick={_ => props.onApply(nextTree, subst)}>
+                {React.string(label)}
               </button>
-
             | Group(label, children) =>
               <button
-                tabIndex=0
-                onBlur={props.onBlur}
-                key={label ++ i->Int.toString}
-                onClick={_ => drillDown(children)}
-              >
+                tabIndex=0 key={label ++ i->Int.toString}
+                onClick={_ => drillDown(label, children)}>
                 {React.string(label ++ " →")}
               </button>
-
             | Delay(label, getChildren) =>
               <button
-                tabIndex=0
-                onBlur={props.onBlur}
-                key={label ++ i->Int.toString}
-                onClick={_ => drillDown(getChildren())}
-              >
+                tabIndex=0 key={label ++ i->Int.toString}
+                onClick={_ => drillDown(label, getChildren())}>
                 {React.string(label ++ " ...")}
               </button>
             }
-          })
+          )
           ->React.array}
         </div>
       </div>
     }
+  }
+  module SidebarView = {
+    type props = {
+      ctx: MethodView.Method.Context.t,
+      goal: Judgment.t,
+      grammar: Term.grammar,
+      attached: Results.attached<MethodView.Method.t<Proof.checked>>,
+      onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
+      //onBlur: ReactEvent.Focus.t => unit,
+    }
+
+    let topLevelNodes = (props: props): array<Results.t<MethodView.Method.t<Proof.checked>>> => {
+      let assumptionGroups =
+        props.attached.assumptions->Array.map(((i, results)) => {
+          let name = props.ctx.localFactNames[i]->Option.getOr(`#${Int.toString(i)}`)
+          Results.Group(name, results)
+        })
+      Array.concat(assumptionGroups, props.attached.goal)
+    }
+
+    @react.componentWithProps
+    let make = (props: props) =>
+      <div className="sidebar-content resizable-panel">
+        <div className="sidebar-goal">
+          <ScopeView scope={props.ctx.fixes} editable=None />
+          <JudgmentView judgment={props.goal} grammar={props.grammar} scope={props.ctx.fixes} />
+        </div>
+        <ResultsView
+          initialNodes={topLevelNodes(props)}
+          onApply={props.onApply}
+        />
+      </div>
   }
 
 
@@ -142,6 +158,7 @@ module Make = (
       ctx: MethodView.Method.Context.t,
       conclusion: Judgment.t,
       display: Proof.display,
+      grammar: Term.grammar,
       gen: Term.gen,
       onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
     }
@@ -150,17 +167,27 @@ module Make = (
     let make = (props: props) => {
       let {sidebarRef} = React.useContext(SidebarContext.context)
       let (isFocused, setFocused) = React.useState(() => false)
-
+      let groupId = React.useId()
       let onBlur = e => {
-        let leavingProof =
+        let stillInGroup =
           ReactEvent.Focus.relatedTarget(e)
-          ->Option.flatMap(el => el->closest(".sidebar")->Nullable.toOption)
-          ->Option.isNone
-        if leavingProof {
+          ->Option.flatMap(el => el->closest(`.outside-click-group-${groupId}`)->Nullable.toOption)
+          ->Option.isSome
+        if !stillInGroup {
           setFocused(_ => false)
         }
       }
-
+      let setRef = (node: Nullable.t<Dom.element>): option<unit => unit> => {
+        Console.log2("setRef called", node)
+        switch node->Nullable.toOption {
+        | None => None
+        | Some(el) => {
+            let handler = _ => setFocused(_ => false)
+            el->addEventListener("outsideclick", handler)
+            Some(() => el->removeEventListener("outsideclick", handler))
+          }
+        }
+      }
       let portal = switch sidebarRef.current->Nullable.toOption {
       | None => React.null
       | Some(node) =>
@@ -178,13 +205,13 @@ module Make = (
             rl,
           )
         )
-        Portal.createPortal(<ResultsView initialNodes=res onBlur onApply=props.onApply />, node)
+
+        Portal.createPortal(<div className={`outside-click-group-${groupId}`} onBlur><SidebarView ctx={props.ctx} goal={props.conclusion} grammar={props.grammar} attached=res onApply=props.onApply /></div>, node)
       }
 
-      <div
-        className="proof-goal"
-        tabIndex=0
-        onBlur
+      <div ref={ReactDOM.Ref.callbackDomRef(setRef)}
+        className={`proof-goal outside-click-group-${groupId}`}
+        tabIndex=0 onBlur
         onFocus={e => {
           setFocused(_ => true)
           ReactEvent.Focus.stopPropagation(e)
@@ -241,7 +268,7 @@ module Make = (
               }
             </>
           | Goal =>
-            <GoalButton ctx conclusion=rule.conclusion display gen=props.gen
+            <GoalButton ctx conclusion=rule.conclusion display gen=props.gen grammar=props.grammar
               onApply={(opt, subst) =>
                 props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}), subst)}
             />
@@ -296,13 +323,13 @@ module Make = (
                   }
                 }
                 <td rowSpan=3 className="rule-cell rule-rulebox">
-                {MethodView.summary({method: m, ctx,
+                <span className="rule-rulename">{MethodView.summary({method: m, ctx,
                   ruleStyle: props.ruleStyle,
                   grammar: props.grammar,
                   gen: props.gen,
                   onChange: (newm, subst) =>
                     props.onChange(Proof.Checked({fixes, assumptions, method: Do(newm), rule, display}), subst),
-                })}
+                })}</span>
                 <span
                   className="button-icon button-icon-red typcn typcn-trash"
                   onClick={_ => props.onChange(Proof.toGoal(props.proof), Term.makeSubst())}
@@ -310,7 +337,7 @@ module Make = (
                 </td></>
               | Goal => count := 1
                 <><td className="rule-cell rule-premise">
-                  <GoalButton ctx conclusion=rule.conclusion display gen=props.gen
+                  <GoalButton ctx conclusion=rule.conclusion display gen=props.gen grammar=props.grammar
                     onApply={(opt, subst) =>
                       props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}), subst)}
                   />
@@ -346,7 +373,7 @@ module Make = (
                     }
                   }
                   <RuleView rule=r style={linearStyle} scope={ctx.fixes} grammar={props.grammar}>
-                    <UIWidgets.EditableLabel label=n onConfirm={handleChange} />
+                    <span className="rule-rulename-local"><UIWidgets.EditableLabel label=n onConfirm={handleChange} /></span>
                   </RuleView>
                 </span>
               })->React.array
@@ -428,8 +455,9 @@ module Make = (
                         | Error(e) => Error(e)
                         }
                       <li key={Int.toString(i.contents - 1)}>
+                      
                         <RuleView rule=r style=props.ruleStyle scope={ctx.fixes} grammar={props.grammar}>
-                          <UIWidgets.EditableLabel label=n onConfirm={handleChange} />
+                          <span className="rule-rulename-local"><UIWidgets.EditableLabel label=n onConfirm={handleChange} /></span>
                         </RuleView>
                       </li>
                     })->React.array}
@@ -449,7 +477,7 @@ module Make = (
                   ctx
                   conclusion=rule.conclusion
                   display
-                  gen=props.gen
+                  gen=props.gen grammar=props.grammar
                   onApply={(opt, subst) =>
                     props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}), subst)}
                 />

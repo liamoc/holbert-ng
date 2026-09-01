@@ -193,10 +193,7 @@ let generateCasesRule = (group: predicateGroup): Rule.t => {
       {
         Rule.vars: [],
         premises: [],
-        conclusion: Term.unstrip(
-          Term.Symbol({name: "=", constructor: false}),
-          [Term.Var({idx: offset + idx}), arg],
-        ),
+        conclusion: Term.mkEquation(Term.Var({idx: offset + idx}), arg),
       }
     })
 
@@ -288,7 +285,7 @@ let make = props => {
         grammar={props.imports.grammar}
         style={props.imports.ruleStyle->Option.getOr(Hybrid)}
       >
-        {React.string(n)}
+        <span className="rule-rulename-global">{React.string(n)}</span>
       </RuleView>
     )
     ->React.array}
@@ -308,7 +305,7 @@ let make = props => {
             key={String.make(i)}
             style={props.imports.ruleStyle->Option.getOr(Hybrid)}
           >
-            {React.string(n)}
+            <span className="rule-rulename-global">{React.string(n)}</span>
           </RuleView>
         )
         ->React.array}

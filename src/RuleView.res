@@ -23,7 +23,7 @@ module Make = (
       let {vars, premises, conclusion} = props.rule
       let scope = vars->Array.concat(props.scope->Option.getOr([]))
       <span className="inline-rule">
-        <span className="rule-rulename-defined"> {props.children} </span>
+        <span className="rule-rulename"> {props.children} </span>
         {if premises->Array.length > 0 {
           <span className="symbol symbol-turnstile symbol-bold"> {React.string("(")} </span>
         } else {
@@ -91,7 +91,7 @@ module Make = (
               )}
               //<td className="rule-cell rule-spacer" />
               <td rowSpan=3 className="rule-cell rule-rulebox">
-                <span className="rule-rulename-defined"> {props.children} </span>
+                <span className="rule-rulename"> {props.children} </span>
               </td>
             </tr>
             <tr>
@@ -135,7 +135,7 @@ module Make = (
                 )
               }}
               <td rowSpan=2 className="rule-cell rule-rulebox">
-                <span className="rule-rulename-defined"> {props.children} </span>
+                <span className="rule-rulename"> {props.children} </span>
               </td>
             </tr>
             <tr>

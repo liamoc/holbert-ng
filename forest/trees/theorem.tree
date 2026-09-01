@@ -14,3 +14,14 @@
   
   x. asm |- ?
 }  
+\hol/proof{natinversion}{
+  \hol/dep{config}{config}
+  \hol/dep{nats}{nat} 
+}{  
+  x.
+    (Nat (@S x))
+    ---------------- S-inv
+    (Nat x)
+  
+  x. asm |- ?
+}  

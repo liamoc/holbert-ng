@@ -89,7 +89,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     goal: Judgment.t,
     gen: Term.gen,
     mkSubgoal: Rule.t => 'a,
-  ): array<Results.t<t<'a>>> => {
+  ): Results.attached<t<'a>> => {
     let actionsFor = (ruleName, rule: Rule.t): array<(t<'a>, Term.subst)> =>
       switch Judgment.asEquation(rule.conclusion) {
       | None => []
@@ -136,9 +136,9 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
 
     context
     ->Context.facts
-    ->Array.flatMap(((ruleName, rule)) => {
+    ->Array.map(((ruleName, rule)) => {
       let keyName = Method.RuleRef.prettyPrint(ruleName, ~assms=context.localFactNames)
-      switch actionsFor(ruleName, rule) {
+      let actions = switch actionsFor(ruleName, rule) {
       | [] => []
       | [(step, subst)] => [Results.Action(`rewrite ${keyName} ${dirLabel(step.direction)}`, step, subst)]
       | many => [
@@ -148,8 +148,9 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
               Results.Action(`${Judgment.prettyPrintPath(step.path)} ${dirLabel(step.direction)}`, step, subst)),
           ),
         ]
-      }      
-    })
+      }
+      {Results.goal: actions, assumptions: []}
+    })->Array.reduce(Results.emptyAttached(), Results.combine)
   }
 
   let prettyPrint = (

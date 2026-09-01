@@ -39,23 +39,22 @@ module RuleRefView = {
         )
         let shadowed = lastIndexWithName != index
         if shadowed {
-          <span className="rule-ref rule-ref--local rule-ref--shadowed">
+          <span className="rule-ref rule-rulename-local rule-ref-shadowed">
             {React.string(name)}
             <span className="rule-ref__index"> {React.string(`@${Belt.Int.toString(index)}`)} </span>
           </span>
         } else {
-          <span className="rule-ref rule-ref--local"> {React.string(name)} </span>
+          <span className="rule-ref rule-rulename-local"> {React.string(name)} </span>
         }
       }
     | Global({name}) =>
       let shadowedByLocal = assms->Belt.Array.some(n => n == name)
       if shadowedByLocal {
-        <span className="rule-ref rule-ref--global rule-ref--shadowed">
-          <span className="rule-ref__global-marker"> {React.string("global:")} </span>
+        <span className="rule-ref rule-rulename-global rule-ref--shadowed">
           {React.string(name)}
         </span>
       } else {
-        <span className="rule-ref rule-ref--global"> {React.string(name)} </span>
+        <span className="rule-ref rule-rulename-global"> {React.string(name)} </span>
       }
     }
   }
@@ -85,8 +84,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
-        <b> {React.string("by ")} </b>
-        <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
+        <span className="typcn typcn-media-play"></span>{summary(props)}
         <ul className="subgoals">
           {props.method.subgoals
           ->Array.mapWithIndex((sg, i) => {
@@ -129,14 +127,19 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
-  let summary = props => <span>{React.string("elim ")}<RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames /></span>
+  let summary = props => 
+  <>
+    <span className="rule-rulename-elim">
+      <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
+    </span>
+    <sup>
+      <RuleRefView ruleRef=props.method.elimName assms=props.ctx.localFactNames />
+    </sup>
+  </>
   
   let make = (subRender: srProps<'a> => React.element) => props => {
       <div>
-        <b> {React.string("elim ")} </b>
-        <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
-        <span className="spacer">{React.string(" ")}</span>
-        <RuleRefView ruleRef=props.method.elimName assms=props.ctx.localFactNames />
+        <span className="typcn typcn-media-play"></span>{summary(props)}
         <ul className="subgoals">
           {props.method.subgoals->Array.mapWithIndex((sg, i) => {
             <li key={String.make(i)}>

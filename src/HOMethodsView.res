@@ -20,12 +20,16 @@ module ConstructorDisjointnessView = {
     "onChange": ('a, HOTerm.subst) => unit,
   }
   
-  let summary = props => <span>{React.string("disjointness")}</span>  
+  let summary = props => 
+    <><span className="rule-rulename-keyword">
+    {React.string("disjoint")}
+    </span> 
+    <sup><MethodView.RuleRefView ruleRef=props.method.factName assms=props.ctx.localFactNames /></sup>
+    </>
   let make = (_subRender: srProps<'a> => React.element) =>
     props => {
       <div>
-        <b> {React.string("disjointness ")} </b>
-        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.ctx.localFactNames />
+        <span className="typcn typcn-media-play"></span>{summary(props)}
       </div>
     }
 }
@@ -50,12 +54,16 @@ module ConstructorInjectivityView = {
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
   }
-  let summary = props => <span>{React.string("injectivity")}</span>
+  let summary = props =>
+    <><span className="rule-rulename-keyword">
+    {React.string("injective")}
+    </span> 
+    <sup><MethodView.RuleRefView ruleRef=props.method.factName assms=props.ctx.localFactNames /></sup>
+    </>
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
-        <b> {React.string("injectivity ")} </b>
-        <MethodView.RuleRefView ruleRef=props.method.factName assms=props.ctx.localFactNames />
+        <span className="typcn typcn-media-play"></span>{summary(props)}
         <div className="proof-denest">
         {React.createElement(subRender,{
           "proof": props.method.subgoal,

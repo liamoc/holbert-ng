@@ -68,7 +68,7 @@ module Make = (
           key={String.make(i)}
           style={props.imports.ruleStyle->Option.getOr(Hybrid)}
         >
-          {React.string(n)}
+          <span className="rule-rulename-global">{React.string(n)}</span>
         </RuleView>
       )
       ->React.array}

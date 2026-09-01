@@ -67,10 +67,6 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 .proof-goal:focused {
   border: 1px dashed black;
 }
-.sidebar {
-  position: fixed;
-  bottom: 0;
-}
 .axiom {
   display:inline-block;
   margin-right:10px;
@@ -91,10 +87,10 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
   margin-top:5px;
   margin-bottom:5px;
 }
-.inline-rule > .rule-rulename-defined:not(:empty) {
+.inline-rule > .rule-rulename:not(:empty) {
   margin-right:5px;
 }
-.inline-rule > .rule-rulename-defined:not(:empty):after {
+.inline-rule > .rule-rulename:not(:empty):after {
   content: ': ';
 }
 /* BUTTONS */
@@ -187,11 +183,11 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
     font-size: small;
     padding-right: 1px;
 }
-.rule-rulename-defined {
+.rule-rulename {
     font-family: "Neo Euler Medium";
     font-size: small;
 }
-.rule-rulename-defined > div > input {
+.rule-rulename > div > input {
   font-family: "Neo Euler Medium";
   font-size: small;
 }
@@ -200,12 +196,16 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
     font-size: small;
 }
 
-.rule-rulename-cases-keyword {
+.rule-rulename-keyword {
     font-family: "Computer Modern Sans";
     font-size: small;
 }
+.rule-rulename-global {
+    font-family: "Computer Modern Concrete";
+    font-variant: small-caps;
+}
 .rule-rulename-local {
-    font-family: "Computer Modern Typewriter";
+    font-family: "Neo Euler Medium";
     color: var(--rule-name-local-col);
 }
 .rule-rulename-rewrite {
@@ -310,9 +310,6 @@ display:block;
 .proof-ruleName {
   font-family: "Neo Euler Medium";
 }
-.rule-ref {
-  font-family: "Neo Euler Medium";
-}
 .proof-assumptions-Hybrid > li {
   display: inline-block;
 }
@@ -414,4 +411,122 @@ display:block;
   display: block;
   position: absolute;
   right: 5px;
+}
+
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 1;
+}
+
+.resize-handle:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.sidebar-content {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  z-index: 1000;
+
+  display: flex;
+  flex-direction: column;
+  min-width: 260px;
+  max-width: 360px;
+  background: var(--sidebar-bg, #fafafa);
+  border-left: 1px solid var(--sidebar-border, #ddd);
+  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
+  font-size: 0.9rem;
+  overflow: hidden;
+}
+
+.sidebar-goal {
+  flex: 0 0 auto;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--sidebar-border, #ddd);
+  background: var(--sidebar-goal-bg, #fff);
+}
+
+.drill-down-container {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* required so the scrolling child below can actually shrink */
+  overflow: hidden;
+}
+
+.breadcrumbs {
+  flex: 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem 0;
+}
+
+.breadcrumb-heading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--breadcrumb-color, #666);
+  padding: 0.15rem 0.5rem;
+  background: var(--breadcrumb-bg, #eee);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.breadcrumb-heading:not(:last-child)::after {
+  content: "›";
+  margin-left: 0.4rem;
+  color: var(--breadcrumb-arrow, #aaa);
+}
+
+.back-button {
+  align-self: flex-start;
+  margin: 0.5rem 1rem 0;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.8rem;
+  background: none;
+  border: 1px solid var(--sidebar-border, #ddd);
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--action-color, #333);
+}
+
+.back-button:hover {
+  background: var(--hover-bg, #eee);
+}
+
+.menu-options {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.75rem 1rem;
+}
+
+.menu-options button {
+  text-align: left;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid var(--sidebar-border, #ddd);
+  border-radius: 6px;
+  background: var(--action-bg, #fff);
+  cursor: pointer;
+  font: inherit;
+  color: var(--action-color, #222);
+  transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+.menu-options button:hover {
+  background: var(--hover-bg, #f0f4ff);
+  border-color: var(--hover-border, #b8c8f0);
+}
+
+.menu-options button:focus-visible {
+  outline: 2px solid var(--focus-ring, #4a7dfc);
+  outline-offset: 1px;
 }

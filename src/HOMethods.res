@@ -52,18 +52,22 @@ module ConstructorDisjointness = {
     _goal: Judgment.t,
     _gen: Term.gen,
     _mkSubgoal: Rule.t => 'a,
-  ): array<Results.t<t<'a>>> =>
-    context
-    ->Context.facts
-    ->Array.filterMap(((factName, rule)) =>
-      switch rule {
-      | {Rule.vars: [], premises: [], conclusion} if isDisjointEquation(conclusion) => {
-          let keyName = Method.RuleRef.prettyPrint(factName, ~assms=context.localFactNames)
-          Some(Results.Action(`disjointness ${keyName}`, {factName: factName}, Term.makeSubst()))
-        }
+  ): Results.attached<t<'a>> =>
+    context.localFacts
+    ->Array.mapWithIndex((rule, i) => (i, rule, context.localFactNames->Belt.Array.get(i)))
+    ->Array.filterMap(((i, rule, nameOpt)) =>
+      switch (rule, nameOpt) {
+      | ({Rule.vars: [], premises: []}, Some(factName)) if isDisjointEquation(rule.conclusion) =>
+        Some(
+          Results.atAssumption(
+            i,
+            [Results.Action(`disjointness ${factName}`, {factName: Local({index: i})}, Term.makeSubst())],
+          ),
+        )
       | _ => None
       }
-    )
+    )->Array.reduce(Results.emptyAttached(), Results.combine)
+    
   let prettyPrint = (
       it: t<'a>,
       ~grammar as _,
@@ -149,32 +153,36 @@ module ConstructorInjectivity = {
     goal: Judgment.t,
     _gen: Term.gen,
     mkSubgoal: Rule.t => 'a,
-  ): array<Results.t<t<'a>>> =>
-    context
-    ->Context.facts
-    ->Array.filterMap(((factName, rule)) =>
-      switch rule {
-      | {Rule.vars: [], premises: []} =>
-        switch injectivityPairs(rule.conclusion) {
-        | None => None
-        | Some(pairs) =>
-          let subgoalRule: Rule.t = {
-            Rule.vars: [],
-            premises: pairs->Array.map(mkPremiseRule),
-            conclusion: goal,
+  ): Results.attached<t<'a>> =>
+      context.localFacts
+      ->Array.mapWithIndex((rule, i) => (i, rule, context.localFactNames->Belt.Array.get(i)))
+      ->Array.filterMap(((i, rule, nameOpt)) =>
+        switch (rule, nameOpt) {
+        | ({Rule.vars: [], premises: []}, Some(factName)) =>
+          switch injectivityPairs(rule.conclusion) {
+          | None => None
+          | Some(pairs) =>
+            let subgoalRule: Rule.t = {
+              Rule.vars: [],
+              premises: pairs->Array.map(mkPremiseRule),
+              conclusion: rule.conclusion,
+            }
+            Some(
+              Results.atAssumption(
+                i,
+                [
+                  Results.Action(
+                    `injectivity ${factName}`,
+                    {factName:Local({index:i}), subgoal: subgoalRule->mkSubgoal},
+                    Term.makeSubst(),
+                  ),
+                ],
+              ),
+            )
           }
-          let keyName = Method.RuleRef.prettyPrint(factName, ~assms=context.localFactNames)
-          Some(
-            Results.Action(
-              `injectivity ${keyName}`,
-              {factName, subgoal: subgoalRule->mkSubgoal},
-              Term.makeSubst(),
-            ),
-          )
+        | _ => None
         }
-      | _ => None
-      }
-    )
+      )->Array.reduce(Results.emptyAttached(), Results.combine)
    
   let prettyPrint = (
         it: t<'a>,

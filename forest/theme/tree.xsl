@@ -13,7 +13,8 @@
         <link rel="stylesheet" type="text/css" href="{/f:tree/@base-url}typicons.min.css" />
         <link rel="stylesheet" type="text/css" href="{/f:tree/@base-url}holbert.css" />
           <script type="module" crossorigin="true" src="{/f:tree/@base-url}index-bsTLl1gN.js"></script>
-          
+          <script defer="true" src="{/f:tree/@base-url}resizable.js"></script>          
+          <script defer="true" src="{/f:tree/@base-url}outside-click.js"></script>          
         <meta name="viewport" content="width=device-width" />
         <link rel="stylesheet" href="{/f:tree/@base-url}style.css" />
         <link rel="stylesheet" href="{/f:tree/@base-url}katex.min.css" />

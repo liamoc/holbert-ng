@@ -73,11 +73,9 @@ module Make = (
         },
       )
     }    
-    Console.log("Rendering with")
-    Console.log(props.imports.grammar)
     <SidebarContext sidebarRef>
       <RuleView rule={props.content.rule} grammar={props.imports.grammar} scope={[]} style={ruleStyle}>
-        {React.string(props.content.name)}
+          <span className="rule-rulename-global">{React.string(props.content.name)}</span>
       </RuleView>
       <h4> {React.string("Proof")} </h4>
       <ProofView
@@ -87,7 +85,8 @@ module Make = (
       | Some(msg) => React.string(msg)
       | None => React.null
       }}
-      <div className="sidebar" ref={ReactDOM.Ref.domRef(sidebarRef)} />
+      <div className="sidebar watch-outside-click" ref={ReactDOM.Ref.domRef(sidebarRef)} />
+      
     </SidebarContext>
   }
 }

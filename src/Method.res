@@ -94,11 +94,6 @@ module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 }
 
 module MethodResults = (Term: TERM) => {
-  // Currently all three options produce a button
-  // with both Group and Delay producing sub-menus
-  // I may change Group in future to just present
-  // a boxed group of buttons without nesting it in sub-menus.
-  // So use Delay() if sub-menus is what you actually want.
   type rec t<'a> =
     | Action(string, 'a, Term.subst)
     | Delay(string, unit => array<t<'a>>)
@@ -110,6 +105,40 @@ module MethodResults = (Term: TERM) => {
     | Delay(str, g) => Delay(str, () => g()->Array.map(x => x->map(f)))
     | Group(str, gs) => Group(str, gs->Array.map(x => x->map(f)))
     }
+
+  type attached<'a> = {
+    goal: array<t<'a>>,
+    assumptions: array<(int, array<t<'a>>)>,
+  }
+
+  let emptyAttached: () => attached<'a> = () => {goal: [], assumptions: []}
+
+  let atGoal = (results: array<t<'a>>): attached<'a> => {goal: results, assumptions: []}
+  let atAssumption = (index: int, results: array<t<'a>>): attached<'a> => {
+    goal: [],
+    assumptions: [(index, results)],
+  }
+
+  let combine = (a: attached<'a>, b: attached<'a>): attached<'a> => {
+    let assumptions = Dict.make()
+    Array.concat(a.assumptions, b.assumptions)->Array.forEach(((i, rs)) => {
+      let key = Int.toString(i)
+      let existing = assumptions->Dict.get(key)->Option.getOr([])
+      assumptions->Dict.set(key, Array.concat(existing, rs))
+    })
+    {
+      goal: Array.concat(a.goal, b.goal),
+      assumptions:
+        assumptions
+        ->Dict.toArray
+        ->Array.map(((k, rs)) => (Int.fromString(k)->Option.getExn, rs)),
+    }
+  }
+
+  let mapAttached = (x: attached<'a>, f: 'a => 'b): attached<'b> => {
+    goal: x.goal->Array.map(r => r->map(f)),
+    assumptions: x.assumptions->Array.map(((i, rs)) => (i, rs->Array.map(r => r->map(f)))),
+  }
 }
 
 module type PROOF_METHOD = {
@@ -122,7 +151,7 @@ module type PROOF_METHOD = {
   let keywords: array<string>
   let substitute: (t<'a>, Term.subst) => t<'a>
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
-  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => array<Results.t<t<'a>>>
+  let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => Results.attached<t<'a>>
   let map: (t<'a>, 'a => 'b) => t<'b>
   type key
   let subproofs: t<'a> => array<(key,'a)>
@@ -306,7 +335,7 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
           )
         }
       }
-    })
+    })->Results.atGoal
   }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let keyName = RuleRef.prettyPrint(it.ruleName, ~assms=ctx.localFactNames);
@@ -504,8 +533,7 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     }
   }
 
-
-  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
+  let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a): Results.attached<t<'a>> => {
     let possibleRules =
       ctx.globalFacts
       ->Dict.toArray
@@ -518,44 +546,52 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     let possibleElims =
       ctx.localFacts
       ->Array.filter(r => r.premises->Array.length == 0 && r.vars->Array.length == 0)
-      
-    possibleElims->Array.mapWithIndex((elim, i) => {
-      let elimName = RuleRef.Local({index:i})
-      let elimNameS = ctx.localFactNames[i]->Option.getExn
-      Results.Delay(
-        "elim " + elimNameS,
-        () => {
-          let subtree = []
-          possibleRules->Array.forEach(((ruleNameS, rule)) => {
-            let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
-            let rule' = rule->Rule.instantiate(ruleInsts)
-            Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
-            ->Seq.take(seqSizeLimit)
-            ->Seq.forEach(
-              elimSub => {
-                let rule'' = rule'->Rule.substituteBare(elimSub)
-                Judgment.unify(rule''.conclusion, j, ~gen)
-                ->Seq.take(seqSizeLimit)
-                ->Seq.forEach(
-                  ruleSub => {
-                    let subst = Term.mergeSubsts(elimSub, ruleSub)
-                    let values = ruleInsts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
-                    let new = {
-                      ruleName: RuleRef.Global({name: ruleNameS}),
-                      elimName,
-                      instantiation: values,
-                      subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
-                    }
-                    subtree->Array.push(Results.Action("with " ++ ruleNameS, new, subst))
-                  },
-                )
+
+    let byAssumption =
+      possibleElims->Array.mapWithIndex((elim, i) => {
+        let elimName = RuleRef.Local({index: i})
+        let elimNameS = ctx.localFactNames[i]->Option.getExn
+        Results.atAssumption(
+          i,
+          [
+            Results.Delay(
+              "elim " ++ elimNameS,
+              () => {
+                let subtree = []
+                possibleRules->Array.forEach(((ruleNameS, rule)) => {
+                  let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
+                  let rule' = rule->Rule.instantiate(ruleInsts)
+                  Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
+                  ->Seq.take(seqSizeLimit)
+                  ->Seq.forEach(
+                    elimSub => {
+                      let rule'' = rule'->Rule.substituteBare(elimSub)
+                      Judgment.unify(rule''.conclusion, j, ~gen)
+                      ->Seq.take(seqSizeLimit)
+                      ->Seq.forEach(
+                        ruleSub => {
+                          let subst = Term.mergeSubsts(elimSub, ruleSub)
+                          let values = ruleInsts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
+                          let new = {
+                            ruleName: RuleRef.Global({name: ruleNameS}),
+                            elimName,
+                            instantiation: values,
+                            subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
+                          }
+                          subtree->Array.push(Results.Action("with " ++ ruleNameS, new, subst))
+                        },
+                      )
+                    },
+                  )
+                })
+                subtree
               },
-            )
-          })
-          subtree
-        },
-      )
-    })
+            ),
+          ],
+        )
+      })
+
+    byAssumption->Array.reduce(Results.emptyAttached(), Results.combine)
   }
 }
 
@@ -614,7 +650,7 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
     }
   }
   let apply = (_ctx: Context.t, _j: Judgment.t, _gen: Term.gen, _f: Rule.t => 'a) => {
-    []
+    Results.emptyAttached()
   }
   type key = Proof | Show
   let subproofs = it => [(Proof,it.proof),(Show,it.show)]
@@ -667,12 +703,8 @@ module Combine = (
   }
   
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
-    let d1 = Method1.apply(ctx, j, gen, f)->Array.map(me => me->Results.map(m => First(m)))
-    Array.pushMany(
-      d1,
-      Method2.apply(ctx, j, gen, f)->Array.map(me => me->Results.map(m => Second(m))),
-    )
-    d1
+    Results.combine(Method1.apply(ctx, j, gen, f)->Results.mapAttached(m => First(m)),
+      Method2.apply(ctx, j, gen, f)->Results.mapAttached(m => Second(m)))
   }
   let check = (it, ctx, j, f) =>
     switch it {

@@ -98,13 +98,18 @@ let compile = (g: grammar): result<compiled, string> => {
 }
 // Incrementally merge two already-compiled grammars. Cheaper than
 // uncompile/append/compile.
+// Clobbers ops if there are duplicates, so combining should be idempotent.
 //
 // Collisions: A `tighterThan` edge from `b` that would
 // close a cycle in the merged graph is silently dropped instead.
 let combine = (a: compiled, b: compiled): compiled => {
-  let ops = Array.concat(a.ops, b.ops)
+  let existingNames = Belt.Set.String.fromArray(a.ops->Array.map(op => op.name))
+  let newOps = b.ops->Array.filter(op => !Belt.Set.String.has(existingNames, op.name))
+  let ops = Array.concat(a.ops, newOps)
+
   let byName = a.byName->Dict.copy
   b.byName->Dict.toArray->Array.forEach(((k, v)) => byName->Dict.set(k, v))
+
   let reserved = Belt.Set.String.union(a.reserved, b.reserved)
 
   let immediateTighter = a.immediateTighter->Dict.copy

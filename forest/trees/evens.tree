@@ -5,10 +5,10 @@
   \hol/dep{config}{config}
 }{
   ---- E-Z
-  (Even 0)
+  (Even @0)
   
 n.
   (Even n)
   ------- E-SS
-  (Even (S (S n)))
+  (Even (@S (@S n)))
 }
