@@ -124,6 +124,10 @@ module type PROOF_METHOD = {
   let check: (t<'a>, Context.t, Judgment.t, ('a, Rule.t) => 'b) => result<t<'b>, string>
   let apply: (Context.t, Judgment.t, Term.gen, Rule.t => 'a) => array<Results.t<t<'a>>>
   let map: (t<'a>, 'a => 'b) => t<'b>
+  type key
+  let subproofs: t<'a> => array<(key,'a)>
+  let setSubproof: (t<'a>, key, 'a) => t<'a>
+  
   let parse: (
     string,
     ~keyword: string,
@@ -155,6 +159,16 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     instantiation: array<Term.t>,
     subgoals: array<'a>,
   }
+  type key = int
+  let subproofs = it => it.subgoals -> Array.mapWithIndex((x,i) => (i,x))
+
+  let setSubproof = (it, key, sg) => {
+    let newsgs = it.subgoals->Array.copy
+    newsgs->Array.set(key, sg)
+    {...it, subgoals: newsgs}
+  }
+  
+
   let map = (it: t<'a>, f) => {
     {
       ruleName: it.ruleName,
@@ -325,11 +339,6 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     | _ => Error("Incorrect number of binders")
     }
   }
-  let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
-    let newsgs = it.subgoals->Array.copy
-    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
-    {...it, subgoals: newsgs}
-  }
 }
 
 module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
@@ -369,6 +378,14 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ->Array.map(s => subprinter(s, ~grammar, ~scope, ~assms, ~indentation=indentation + 2))
       ->Array.join(newline)
     `elim (${ruleName} ${elimName} ${instantiation}) {${subgoalsSpacer}${subgoalsStr}}`
+  }
+  type key = int
+  let subproofs = it => it.subgoals -> Array.mapWithIndex((x,i) => (i,x))
+
+  let setSubproof = (it, key, sg) => {
+    let newsgs = it.subgoals->Array.copy
+    newsgs->Array.set(key, sg)
+    {...it, subgoals: newsgs}
   }
 
   let map = (it: t<'a>, f) => {
@@ -487,11 +504,6 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
     }
   }
 
-  let updateAtKey = (it: t<'a>, key: int, f: 'a => 'a) => {
-    let newsgs = it.subgoals->Array.copy
-    newsgs->Array.set(key, f(newsgs[key]->Option.getExn))
-    {...it, subgoals: newsgs}
-  }
 
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let possibleRules =
@@ -604,6 +616,14 @@ module Lemma = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
   let apply = (_ctx: Context.t, _j: Judgment.t, _gen: Term.gen, _f: Rule.t => 'a) => {
     []
   }
+  type key = Proof | Show
+  let subproofs = it => [(Proof,it.proof),(Show,it.show)]
+  
+  let setSubproof = (it, key, sg) => switch key {
+  | Proof => {...it, proof: sg}
+  | Show  => {...it, show:  sg}
+  }
+  
   let check = (it: t<'a>, _ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let first = f(it.proof, it.rule)
     let second = f(it.show, {vars: [], premises: [it.rule], conclusion: j})
@@ -631,6 +651,21 @@ module Combine = (
     | Second(m) => Second(Method2.substitute(m, subst))
     }
   let keywords = Array.concat(Method1.keywords, Method2.keywords)
+  type key = FirstK(Method1.key) | SecondK(Method2.key)
+  let subproofs = it => 
+    switch it {
+    | First(m) => Method1.subproofs(m)->Array.map( ((k,v)) => (FirstK(k),v) )
+    | Second(m) => Method2.subproofs(m)->Array.map( ((k,v)) => (SecondK(k),v) )
+    }
+
+  let setSubproof = (it, key, sg) => {
+    switch (it,key) {
+    | (First(m), FirstK(k)) => First(Method1.setSubproof(m,k,sg))
+    | (Second(m), SecondK(k)) => Second(Method2.setSubproof(m,k,sg))
+    | _ => it // impossible
+    }
+  }
+  
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
     let d1 = Method1.apply(ctx, j, gen, f)->Array.map(me => me->Results.map(m => First(m)))
     Array.pushMany(

@@ -268,10 +268,17 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 .symbol-turnstile {
     padding-left: 6px;
     padding-right: 6px;
+    color: var(--symbol-col);
+    font-weight:bold;
 }
 .symbol-comma {
     padding-left: 2px;
     padding-right: 4px;
+    color: var(--symbol-col);
+    font-weight:bold;    
+}
+.proof-summary-node > .proof-goal {
+  display:inline-block;
 }
 .symbol-mini {
     font-size: x-small;
@@ -286,6 +293,7 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 margin-bottom:0px;
 border-spacing:0px;
 line-height:1.00;
+text-wrap-mode:nowrap;
 }
 .axiom-set-Linear > .inline-rule {
 display:block;
@@ -307,6 +315,9 @@ display:block;
 }
 .proof-assumptions-Hybrid > li {
   display: inline-block;
+}
+.proof-tree {
+  padding:10px;
 }
 .proof-assumptions-Gentzen > li {
   display: inline-block;
@@ -345,6 +356,7 @@ display:block;
     position:relative;
     box-sizing: border-box;
 }
+
 .error-box {
   position: absolute;
   background: rgb(255, 228, 228);

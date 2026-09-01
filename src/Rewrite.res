@@ -13,9 +13,16 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     newGoal: 'a,
     subgoals: array<'a>,
   }
-
+  
   let keywords = ["rewrite","rev_rewrite"]
-
+  type key = NewGoal | Subgoal(int)
+  let subproofs = (step: t<'a>): array<(key, 'a)> =>
+    Array.concat([(NewGoal, step.newGoal)], step.subgoals->Array.mapWithIndex((v, i) => (Subgoal(i), v)))
+  let setSubproof = (step: t<'a>, k: key, newVal: 'a): t<'a> =>
+    switch k {
+    | NewGoal => {...step, newGoal: newVal}
+    | Subgoal(i) => {...step, subgoals: Util.updateAtIndex(step.subgoals, i, newVal)}
+    }
   let substitute = (step: t<'a>, subst: Term.subst): t<'a> => {
     ...step,
     values: step.values->Array.map(v => Term.substitute(v, subst)),

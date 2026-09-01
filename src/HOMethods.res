@@ -11,7 +11,9 @@ module ConstructorDisjointness = {
 
   let substitute = (step: t<'a>, _subst: Term.subst): t<'a> => step
   let map = (step: t<'a>, _f: 'a => 'b): t<'b> => {factName: step.factName}
-
+  type key = unit
+  let subproofs = _ => []
+  let setSubproof = (it,_,_) => it
   let ctorHead = t =>
     switch Term.strip(t) {
     | (Term.Symbol({name, constructor: true}), args) => Some((name, Array.length(args)))
@@ -95,7 +97,13 @@ module ConstructorInjectivity = {
 
   let substitute = (step: t<'a>, _subst: Term.subst): t<'a> => step
   let map = (step: t<'a>, f: 'a => 'b): t<'b> => {factName: step.factName, subgoal: f(step.subgoal)}
+  type key = unit
+  
+  let subproofs = it => [((),it.subgoal)]
 
+  let setSubproof = (it: t<'a>, _key: unit, g) => {
+    {...it, subgoal: g}
+  }
   // (= (@A a1..an) (@A b1..bn)) -> Some([(a1,b1), ..., (an,bn)])
   let injectivityPairs = (eqn: Term.t): option<array<(Term.t, Term.t)>> =>
     switch Term.asEquation(eqn) {
@@ -196,8 +204,5 @@ module ConstructorInjectivity = {
     }
   }
 
-  let updateGoal = (it: t<'a>, f: 'a => 'a) => {
-    {...it, subgoal: f(it.subgoal)}
-  }
         
 }

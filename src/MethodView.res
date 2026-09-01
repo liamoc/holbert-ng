@@ -21,6 +21,7 @@ module type METHOD_VIEW = {
     "onChange": ('a, Term.subst) => unit,
   }
   let make: (srProps<'a> => React.element) => props<'a> => React.element
+  let summary: props<'a> => React.element
 }
 
 module RuleRefView = {
@@ -80,6 +81,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
+  let summary = props => <RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames />
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
@@ -98,7 +100,7 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
                   "grammar": props.grammar,
                   "gen": props.gen,
                   "onChange": (newa, subst: Term.subst) =>
-                    props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
+                    props.onChange(props.method->Method.setSubproof(i, newa), subst),
                 },
               )}
             </li>
@@ -127,6 +129,8 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
+  let summary = props => <span>{React.string("elim ")}<RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames /></span>
+  
   let make = (subRender: srProps<'a> => React.element) => props => {
       <div>
         <b> {React.string("elim ")} </b>
@@ -145,7 +149,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
                   "grammar": props.grammar,                  
                   "gen": props.gen,
                   "onChange": (newa, subst: Term.subst) =>
-                    props.onChange(props.method->Method.updateAtKey(i, _ => newa), subst),
+                    props.onChange(props.method->Method.setSubproof(i, newa), subst),
                 },
               )}
             </li>
@@ -178,6 +182,7 @@ module LemmaView = (
     "gen": Term.gen,    
     "onChange": ('a, Term.subst) => unit,
   }
+  let summary = props => <span>{React.string("lemma")}</span>
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
@@ -231,6 +236,25 @@ module CombineMethodView = (
     onChange: (Method.t<'a>, Term.subst) => unit,
   }
   type srProps<'a> = Method1View.srProps<'a>
+  let summary = props =>
+      switch props.method {
+      | First(m) => Method1View.summary({
+          method: m,
+          ctx: props.ctx,
+          ruleStyle: props.ruleStyle,
+          grammar: props.grammar,
+          gen: props.gen,
+          onChange: (n, s) => props.onChange(First(n), s),
+        })
+      | Second(m) => Method2View.summary({
+          method: m,
+          ctx: props.ctx,
+          ruleStyle: props.ruleStyle,
+          grammar: props.grammar,
+          gen: props.gen,
+          onChange: (n, s) => props.onChange(Second(n), s),
+        })
+      }
   let make = (subrender: srProps<'a> => React.element) =>
     props => {
       switch props.method {

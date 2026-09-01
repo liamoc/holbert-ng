@@ -19,6 +19,8 @@ module ConstructorDisjointnessView = {
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
   }
+  
+  let summary = props => <span>{React.string("disjointness")}</span>  
   let make = (_subRender: srProps<'a> => React.element) =>
     props => {
       <div>
@@ -48,6 +50,7 @@ module ConstructorInjectivityView = {
     "gen": HOTerm.gen,
     "onChange": ('a, HOTerm.subst) => unit,
   }
+  let summary = props => <span>{React.string("injectivity")}</span>
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>
@@ -61,7 +64,7 @@ module ConstructorInjectivityView = {
           "grammar": props.grammar,
           "gen": props.gen,
           "onChange": (newa, subst: HOTerm.subst) => 
-            props.onChange(props.method->Method.updateGoal(_=>newa), subst), 
+            props.onChange(props.method->Method.setSubproof((),newa), subst), 
         })}
         </div>      
       </div>

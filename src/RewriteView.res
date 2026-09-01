@@ -20,6 +20,7 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
     "gen": Term.gen,
     "onChange": ('a, Term.subst) => unit,
   }
+  let summary = props => <span>{React.string("rw ")}<MethodView.RuleRefView ruleRef=props.method.ruleName assms=props.ctx.localFactNames /></span>
   let make = (subRender: srProps<'a> => React.element) =>
     props => {
       <div>

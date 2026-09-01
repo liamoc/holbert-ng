@@ -411,7 +411,7 @@ let unify = (t1, t2, ~gen=?) => {
 
 type grammar = MixfixGrammar.compiled
 
-let nameRES = "^([^\\s.\\[\\]()]+)\\."
+let nameRES = "^([^\\s.|\\[\\]()]+)\\."
 let prettyPrintMeta = (str: string) => {
   String.concat(str, ".")
 }
