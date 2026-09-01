@@ -101,8 +101,8 @@ class Handler {
 		}
 		this.component = null;
 		this.notifySubscribers = function(msg: any) {
-			console.log(this.url, this.subscribers)
-			if (this.component != null) {
+      console.log("NOTIFY", this.url, "subscriber count:", this.subscribers.length, this.subscribers.map(s => s.url))
+ 			if (this.component != null) {
 				for (let sub of this.subscribers) {
 					if (sub.component != null) {
 						sub.component.dependencyChanged(this.url, this.component, msg)

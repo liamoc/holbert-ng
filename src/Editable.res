@@ -10,9 +10,9 @@ module TextArea = (Underlying: COMPONENT) => {
   }
   type state = result<Underlying.state, (string, string)>
 
-  let serialise = state =>
+  let serialise = (state, ~imports: Ports.t) =>
     switch state {
-    | Ok(s) => Underlying.serialise(s)
+    | Ok(s) => Underlying.serialise(s, ~imports)
     | Error((_err, str)) => str
     }
   let deserialise = (str: string, ~imports: Ports.t) => {
@@ -23,7 +23,7 @@ module TextArea = (Underlying: COMPONENT) => {
   }
   let make = props => {
     let (editing, setEditing) = React.useState(_ => false)
-    let (text, setText) = React.useState(_ => serialise(props.content))
+    let (text, setText) = React.useState(_ => serialise(props.content, ~imports=props.imports))
     let onTextChange = (ev: JsxEvent.Form.t) => {
       let target = JsxEvent.Form.target(ev)
       let value: string = target["value"]
@@ -54,7 +54,7 @@ module TextArea = (Underlying: COMPONENT) => {
             imports={props.imports}
             reset={props.reset}
             /* onLoad={(~exports, ~string=?) =>
-             props.onLoad(~exports, ~string=string->Option.getOr(Underlying.serialise(us)))} */
+             props.onLoad(~exports, ~string=string->Option.getOr(Underlying.serialise(us, props.imports)))} */
             onChange={(state, ~exports=?) => {
               props.onChange(Ok(state), ~exports?)
             }}
@@ -63,7 +63,7 @@ module TextArea = (Underlying: COMPONENT) => {
             <span
               className="editor-button button-icon button-icon-blue typcn typcn-edit"
               onClick={_ => {
-                setText(_ => serialise(props.content))
+                setText(_ => serialise(props.content, ~imports=props.imports))
                 setEditing(_ => true)
               }}
             />
@@ -82,7 +82,7 @@ module TextArea = (Underlying: COMPONENT) => {
             <span
               className="editor-button button-icon button-icon-blue typcn typcn-edit"
               onClick={_ => {
-                setText(_ => serialise(props.content))
+                setText(_ => serialise(props.content, ~imports=props.imports))
                 setEditing(_ => true)
               }}
             />

@@ -16,7 +16,6 @@ module Make = (
   module Ports = Ports(Term, Judgment)
   type state = {
     name: string,
-    grammar: Term.grammar,
     rule: Rule.t,
     proof: Proof.t,
     gen: Term.gen,
@@ -28,11 +27,11 @@ module Make = (
     onChange: (state, ~exports: Ports.t=?) => unit,
     reset: unit => unit,
   }
-  let serialise = (state: state) => {
+  let serialise = (state: state, ~imports: Ports.t) => {
     state.rule
-    ->Rule.prettyPrintTopLevel(~name=state.name,~grammar=state.grammar)
+    ->Rule.prettyPrintTopLevel(~name=state.name,~grammar=imports.grammar)
     ->String.concat("\n\n")
-    ->String.concat(Proof.prettyPrint(state.proof, ~grammar=state.grammar, ~scope=[], ~assms=[]))
+    ->String.concat(Proof.prettyPrint(state.proof, ~grammar=imports.grammar, ~scope=[], ~assms=[]))
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
     let _facts = imports.facts
@@ -47,7 +46,7 @@ module Make = (
         Error("Trailing input: "->String.concat(s'))
       | Ok((proof, _)) =>
         Ok((
-          {name, rule, proof, gen, substFailed: None, grammar: imports.grammar},
+          {name, rule, proof, gen, substFailed: None},
           {Ports.facts: Dict.fromArray([(name, rule)]), ruleStyle: None, grammar: Term.emptyGrammar},
         ))
       }
@@ -74,14 +73,15 @@ module Make = (
         },
       )
     }    
-    Console.log(props.content.grammar);
+    Console.log("Rendering with")
+    Console.log(props.imports.grammar)
     <SidebarContext sidebarRef>
-      <RuleView rule={props.content.rule} grammar={props.content.grammar} scope={[]} style={ruleStyle}>
+      <RuleView rule={props.content.rule} grammar={props.imports.grammar} scope={[]} style={ruleStyle}>
         {React.string(props.content.name)}
       </RuleView>
       <h4> {React.string("Proof")} </h4>
       <ProofView
-        ruleStyle={ruleStyle} ctx={ctx} grammar={props.content.grammar} proof=checked gen={props.content.gen} onChange=proofChanged
+        ruleStyle={ruleStyle} ctx={ctx} grammar={props.imports.grammar} proof=checked gen={props.content.gen} onChange=proofChanged
       />
       {switch props.content.substFailed {
       | Some(msg) => React.string(msg)

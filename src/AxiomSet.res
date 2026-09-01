@@ -8,7 +8,7 @@ module Make = (
   module Rule = Rule.Make(Term, Judgment)
   module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   module Ports = Ports(Term, Judgment)
-  type state = { rules: dict<Rule.t>, grammar: Term.grammar }
+  type state = { rules: dict<Rule.t> }
   type props = {
     content: state,
     imports: Ports.t,
@@ -16,10 +16,10 @@ module Make = (
     reset: unit => unit,
   }
 
-  let serialise = (state: state) => {
+  let serialise = (state: state, ~imports: Ports.t) => {
     state.rules
     ->Dict.toArray
-    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=state.grammar))
+    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=imports.grammar))
     ->Array.join("\n")
   }
   let deserialise = (str: string, ~imports: Ports.t) => {
@@ -49,7 +49,7 @@ module Make = (
       }
     }
     ret.contents->Result.map(state => (
-      {rules: state, grammar: imports.grammar }, 
+      {rules: state }, 
       {Ports.facts: state, ruleStyle: None, grammar: Term.emptyGrammar}))
   }
 
@@ -63,7 +63,7 @@ module Make = (
       ->Array.mapWithIndex(((n, r), i) =>
         <RuleView
           rule={r}
-          grammar={props.content.grammar}
+          grammar={props.imports.grammar}
           scope={[]}
           key={String.make(i)}
           style={props.imports.ruleStyle->Option.getOr(Hybrid)}

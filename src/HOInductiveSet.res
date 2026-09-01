@@ -6,7 +6,7 @@ module JudgmentView = TermViewAsJudgmentView.Make(Term, Judgment, HOTermView)
 module Rule = Rule.Make(Term, Judgment)
 module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
 module Ports = Ports(Term, Judgment)
-type state = {grammar: Term.grammar, rules: dict<Rule.t>}
+type state = {rules: dict<Rule.t>}
 type props = {
   content: state,
   imports: Ports.t,
@@ -236,10 +236,10 @@ let derived = (state: dict<Rule.t>): dict<Rule.t> =>
     [("§induction-" ++ group.name, inductionRule), ("§cases-" ++ group.name, casesRule)]
   })
   ->Dict.fromArray
-let serialise = (state: state) =>
+let serialise = (state: state, ~imports: Ports.t) =>
   state.rules
   ->Dict.toArray
-  ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=state.grammar))
+  ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=imports.grammar))
   ->Array.join("\n")
 let deserialise = (str: string, ~imports: Ports.t) => {
   let cur = ref(str)
@@ -268,7 +268,7 @@ let deserialise = (str: string, ~imports: Ports.t) => {
     }
   }
   ret.contents->Result.map(state => (
-    {rules:state, grammar: imports.grammar},
+    {rules:state},
     {Ports.facts: state->Dict.copy->Dict.assign(derived(state)), ruleStyle: None, grammar: Term.emptyGrammar},
   ))
 }
@@ -285,7 +285,7 @@ let make = props => {
         rule={r}
         scope={[]}
         key={String.make(i)}
-        grammar={props.content.grammar}
+        grammar={props.imports.grammar}
         style={props.imports.ruleStyle->Option.getOr(Hybrid)}
       >
         {React.string(n)}
@@ -304,7 +304,7 @@ let make = props => {
           <RuleView
             rule={r}
             scope={[]}
-            grammar={props.content.grammar}
+            grammar={props.imports.grammar}
             key={String.make(i)}
             style={props.imports.ruleStyle->Option.getOr(Hybrid)}
           >

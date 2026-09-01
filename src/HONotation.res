@@ -13,7 +13,7 @@ type props = {
   reset: unit => unit,
 }
 
-let serialise = s => {
+let serialise = (s, ~imports as _:Ports.t) => {
   MixfixGrammar.prettyPrintGrammar(s.grammar)
 }
 let deserialise = (input: string, ~imports as _: Ports.t) => {

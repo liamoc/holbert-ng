@@ -17,7 +17,7 @@ function HolComp(RComp : any) {
 		state: any;
 		original_str: string;
 		toString() {
-			return RComp.serialise(this.state)
+			return RComp.serialise(this.state, this.gatherImports())
 		}
 		gatherImports() {
 			let ret = RComp.Ports.empty
@@ -33,7 +33,6 @@ function HolComp(RComp : any) {
 			this.root.render(
 				<Tag content={this.state} imports={this.gatherImports()} 
 					reset={ () => {
-            console.log("Reset invoked on " + this.original_str)
 						reset(0)
 					}}
 					onChange={ (state, exports) => {
@@ -62,10 +61,10 @@ function HolComp(RComp : any) {
 			if (foo.TAG == "Ok") {
 				this.exports = foo._0[1]
 				this.state = foo._0[0]
-				this.dependencyChanged = (_depName, _comp) => {
+				this.dependencyChanged = (depName, comp) => {
+          this.deps[depName] = comp;
 					this.render(signal, reset)
 				};
-				console.log("Loaded", this);
 				loaded(null)
 				this.loaded = true;
 				this.render(signal, reset)

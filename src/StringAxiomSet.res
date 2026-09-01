@@ -11,8 +11,7 @@ module Make = (
   module Ports = Ports(Term, Term)
   type state = {
     raw: dict<Rule.t>,
-    derived: dict<Rule.t>,
-    grammar: Term.grammar
+    derived: dict<Rule.t>
   }
 
   type props = {
@@ -188,14 +187,14 @@ module Make = (
           derived->Dict.set(`${group.name}_mutualInduct`, derive(group, mentionedGroups))
         }
       })
-      ({raw, derived, grammar: imports.grammar}, {Ports.facts: raw->Dict.copy->Dict.assign(derived), ruleStyle: None, grammar: Term.emptyGrammar})
+      ({raw, derived}, {Ports.facts: raw->Dict.copy->Dict.assign(derived), ruleStyle: None, grammar: Term.emptyGrammar})
     })
   }
 
-  let serialise = (state: state) => {
+  let serialise = (state: state, ~imports: Ports.t) => {
     state.raw
     ->Dict.toArray
-    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=state.grammar))
+    ->Array.map(((k, r)) => r->Rule.prettyPrintTopLevel(~name=k, ~grammar=imports.grammar))
     ->Array.join("\n")
   }
 
@@ -211,7 +210,7 @@ module Make = (
         ->Array.mapWithIndex(((n, r), i) =>
           <RuleView
             rule={r}
-            grammar={props.content.grammar}
+            grammar={props.imports.grammar}
             scope={[]}
             key={String.make(i)}
             style={props.imports.ruleStyle->Option.getOr(Hybrid)}
