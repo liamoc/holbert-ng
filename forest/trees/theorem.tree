@@ -1,7 +1,7 @@
 \import{holbert-macros}
 \title{Proofs!}
 \taxon{Theorem}
-\p{All [even](evens) numbers are natural numbers.}
+\p{All [even](evens) numbers are natural numbers. Note that [even numbers](evens) are defined in a separate page, but changes are seamlessly synced over. }
 \hol/proof{evensarenats}{
   \hol/dep{config}{config}
   \hol/dep{nats}{nat} 

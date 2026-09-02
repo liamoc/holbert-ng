@@ -54,14 +54,14 @@ module ConstructorDisjointness = {
     _mkSubgoal: Rule.t => 'a,
   ): Results.attached<t<'a>> =>
     context.localFacts
-    ->Array.mapWithIndex((rule, i) => (i, rule, context.localFactNames->Belt.Array.get(i)))
-    ->Array.filterMap(((i, rule, nameOpt)) =>
-      switch (rule, nameOpt) {
-      | ({Rule.vars: [], premises: []}, Some(factName)) if isDisjointEquation(rule.conclusion) =>
+    ->Array.mapWithIndex((rule, i) => (i, rule))
+    ->Array.filterMap(((i, rule)) =>
+      switch rule {
+      | {Rule.vars: [], premises: []} if isDisjointEquation(rule.conclusion) =>
         Some(
           Results.atAssumption(
             i,
-            [Results.Action(`disjointness ${factName}`, {factName: Local({index: i})}, Term.makeSubst())],
+            [Results.Action(Results.Text(`disjointness`), {factName: Local({index: i})}, Term.makeSubst())],
           ),
         )
       | _ => None
@@ -155,10 +155,10 @@ module ConstructorInjectivity = {
     mkSubgoal: Rule.t => 'a,
   ): Results.attached<t<'a>> =>
       context.localFacts
-      ->Array.mapWithIndex((rule, i) => (i, rule, context.localFactNames->Belt.Array.get(i)))
-      ->Array.filterMap(((i, rule, nameOpt)) =>
-        switch (rule, nameOpt) {
-        | ({Rule.vars: [], premises: []}, Some(factName)) =>
+      ->Array.mapWithIndex((rule, i) => (i, rule))
+      ->Array.filterMap(((i, rule)) =>
+        switch rule {
+        | {Rule.vars: [], premises: []} =>
           switch injectivityPairs(rule.conclusion) {
           | None => None
           | Some(pairs) =>
@@ -172,7 +172,7 @@ module ConstructorInjectivity = {
                 i,
                 [
                   Results.Action(
-                    `injectivity ${factName}`,
+                    Results.Text(`injectivity`),
                     {factName:Local({index:i}), subgoal: subgoalRule->mkSubgoal},
                     Term.makeSubst(),
                   ),

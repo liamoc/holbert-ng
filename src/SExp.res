@@ -256,7 +256,16 @@ module Make = (Atom: AtomDef.ATOM): {
       ->String.concat(")")
     }
 
-  
+  let freshenMetas = (~existing: array<meta>, ~incoming: array<meta>): array<meta> => {
+    let taken = ref(existing)
+    incoming->Array.map(name => {
+      let rec freshen = candidate =>
+        taken.contents->Array.some(n => n == candidate) ? freshen(candidate ++ "'") : candidate
+      let fresh = freshen(name)
+      taken := Array.concat(taken.contents, [fresh])
+      fresh
+    })
+  }
   let nameRES = "^([^\\s.\\[\\]()]+)\\."
   let prettyPrintMeta = (str: string) => {
     String.concat(str, ".")

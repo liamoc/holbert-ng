@@ -25,7 +25,7 @@ module type TERM = {
   let combineGrammars : (grammar, grammar) => grammar
   let parse: (string, ~grammar: grammar, ~scope: array<meta>, ~gen: gen=?) => result<(t, string), string>
   let prettyPrint: (t, ~grammar: grammar, ~scope: array<meta>) => string
-  
+  let freshenMetas: (~existing: array<meta>, ~incoming: array<meta>) => array<meta>
   let parseMeta: string => result<(meta, string), string>
   let prettyPrintMeta: meta => string
   // will unifying t with a term give meaningful substitutions?

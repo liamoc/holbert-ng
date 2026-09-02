@@ -1,6 +1,9 @@
+
+@val external focusGoalNearIndex: (Dom.element, int) => unit = "focusGoalNearIndex"
 open Signatures
 open Component
 open MethodView
+
 module Make = (
   Term: TERM,
   Judgment: JUDGMENT with module Term := Term,
@@ -57,6 +60,26 @@ module Make = (
     let ctx: Context.t = {fixes: [], globalFacts: props.imports.facts, localFacts: [], localFactNames: []}
     let checked = Proof.check(ctx, props.content.proof, props.content.rule)
     let sidebarRef = React.useRef(Nullable.null)
+
+    let rootRef = React.useRef(Nullable.null)
+    let pendingFocusIndex = React.useRef(-1)
+    
+    React.useLayoutEffect1(() => {
+      if pendingFocusIndex.current >= 0 {
+        let idx = pendingFocusIndex.current
+        pendingFocusIndex.current = -1
+        switch rootRef.current->Nullable.toOption {
+        | Some(el) => focusGoalNearIndex(el, idx)
+        | None => ()
+        }
+      }
+      None
+    }, [props.content.proof])
+
+    let requestFocusIndex = (index: int) => {
+      pendingFocusIndex.current = index
+    }
+    
     let proofChanged = (proof, subst) => {
       let proof = Proof.uncheck(proof)->Proof.substitute(subst)
       props.onChange(
@@ -78,15 +101,16 @@ module Make = (
           <span className="rule-rulename-global">{React.string(props.content.name)}</span>
       </RuleView>
       <h4> {React.string("Proof")} </h4>
-      <ProofView
+      <ProofView.FocusNextContext.Provider value={{requestFocusIndex:requestFocusIndex}}>
+      <div className="theorem-instance" ref={ReactDOM.Ref.domRef(rootRef)} ><ProofView
         ruleStyle={ruleStyle} ctx={ctx} grammar={props.imports.grammar} proof=checked gen={props.content.gen} onChange=proofChanged
       />
       {switch props.content.substFailed {
       | Some(msg) => React.string(msg)
       | None => React.null
-      }}
+      }}</div>
       <div className="sidebar watch-outside-click" ref={ReactDOM.Ref.domRef(sidebarRef)} />
-      
+      </ProofView.FocusNextContext.Provider>
     </SidebarContext>
   }
 }

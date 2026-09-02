@@ -94,10 +94,17 @@ module Context = (Term: TERM, Judgment: JUDGMENT with module Term := Term) => {
 }
 
 module MethodResults = (Term: TERM) => {
+  type rec label =
+      | Text(string)
+      | Ref(RuleRef.t)         // render via RuleRefView
+      | RefRule(RuleRef.t)     // render the actual rule
+      | Seq(array<label>)      // multiple labels in a sequence
+      | Assumptions
+
   type rec t<'a> =
-    | Action(string, 'a, Term.subst)
-    | Delay(string, unit => array<t<'a>>)
-    | Group(string, array<t<'a>>)
+    | Action(label, 'a, Term.subst)
+    | Delay(label, unit => array<t<'a>>)
+    | Group(label, array<t<'a>>)
 
   let rec map = (x: t<'a>, f: 'a => 'b) =>
     switch x {
@@ -289,10 +296,14 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
     }
   }
   let apply = (ctx: Context.t, j: Judgment.t, gen: Term.gen, f: Rule.t => 'a) => {
-    ctx
-    ->Context.facts
+    let handleResults = res => 
+      if res->Array.length > 0 { 
+        [Results.Group(Results.Text("Introduction"), res)]->Results.atGoal
+      } else {
+        Results.emptyAttached()
+      }
+    ctx->Context.facts
     ->Array.filterMap(((key, rule)) => {
-      let keyName = RuleRef.prettyPrint(key, ~assms=ctx.localFactNames)
       let insts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
       let res = rule->Rule.instantiate(insts)
       if !Judgment.concrete(res.conclusion) {
@@ -307,11 +318,11 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
         
         switch substs {
         | [] => None
-        | [subst] => Some(Results.Action(`intro ${keyName}`, makeNew(subst), subst))
+        | [subst] => Some(Results.Action(Results.RefRule(key), makeNew(subst), subst))
         | _ =>
           Some(
             Delay(
-              `intro ${keyName}`,
+              Results.RefRule(key),
               () =>
                 substs->Array.map(subst => {
                   let s =
@@ -329,13 +340,13 @@ module Derivation = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =>
                       },
                     )
                     ->Array.join(", ")
-                  Results.Action(s, makeNew(subst), subst)
+                  Results.Action(Results.Text(s), makeNew(subst), subst)
                 }),
             ),
           )
         }
       }
-    })->Results.atGoal
+    })->handleResults
   }
   let check = (it: t<'a>, ctx: Context.t, j: Judgment.t, f: ('a, Rule.t) => 'b) => {
     let keyName = RuleRef.prettyPrint(it.ruleName, ~assms=ctx.localFactNames);
@@ -547,51 +558,59 @@ module Elimination = (Term: TERM, Judgment: JUDGMENT with module Term := Term) =
       ctx.localFacts
       ->Array.filter(r => r.premises->Array.length == 0 && r.vars->Array.length == 0)
 
-    let byAssumption =
-      possibleElims->Array.mapWithIndex((elim, i) => {
-        let elimName = RuleRef.Local({index: i})
-        let elimNameS = ctx.localFactNames[i]->Option.getExn
-        Results.atAssumption(
-          i,
-          [
-            Results.Delay(
-              "elim " ++ elimNameS,
-              () => {
-                let subtree = []
-                possibleRules->Array.forEach(((ruleNameS, rule)) => {
-                  let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
-                  let rule' = rule->Rule.instantiate(ruleInsts)
-                  Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
+      let byAssumption =
+        possibleElims->Array.mapWithIndex((elim, i) => {
+          let elimName = RuleRef.Local({index: i})
+
+          let results =
+            possibleRules->Array.flatMap(((ruleNameS, rule)) => {
+              let ruleInsts = rule->Rule.genSchemaInsts(gen, ~scope=ctx.fixes)
+              let rule' = rule->Rule.instantiate(ruleInsts)
+              let ruleRef = RuleRef.Global({name: ruleNameS})
+
+              let perRule = []
+              Judgment.unify((rule'.premises[0]->Option.getExn).conclusion, elim.conclusion, ~gen)
+              ->Seq.take(seqSizeLimit)
+              ->Seq.forEach(
+                elimSub => {
+                  let rule'' = rule'->Rule.substituteBare(elimSub)
+                  Judgment.unify(rule''.conclusion, j, ~gen)
                   ->Seq.take(seqSizeLimit)
                   ->Seq.forEach(
-                    elimSub => {
-                      let rule'' = rule'->Rule.substituteBare(elimSub)
-                      Judgment.unify(rule''.conclusion, j, ~gen)
-                      ->Seq.take(seqSizeLimit)
-                      ->Seq.forEach(
-                        ruleSub => {
-                          let subst = Term.mergeSubsts(elimSub, ruleSub)
-                          let values = ruleInsts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
-                          let new = {
-                            ruleName: RuleRef.Global({name: ruleNameS}),
-                            elimName,
-                            instantiation: values,
-                            subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
-                          }
-                          subtree->Array.push(Results.Action("with " ++ ruleNameS, new, subst))
-                        },
-                      )
+                    ruleSub => {
+                      let subst = Term.mergeSubsts(elimSub, ruleSub)
+                      let values = ruleInsts->Array.map(i => Term.substitute(i, subst)->Term.reduce)
+                      let new = {
+                        ruleName: ruleRef,
+                        elimName,
+                        instantiation: values,
+                        subgoals: rule.premises->Array.sliceToEnd(~start=1)->Array.map(f),
+                      }
+                      perRule->Array.push((new, subst))
                     },
                   )
-                })
-                subtree
-              },
-            ),
-          ],
-        )
-      })
+                },
+              )
 
-    byAssumption->Array.reduce(Results.emptyAttached(), Results.combine)
+              switch perRule {
+              | [] => []
+              | [(new, subst)] => [Results.Action(Results.Ref(ruleRef), new, subst)]
+              | many =>
+                [
+                  Results.Delay(
+                    Results.Ref(ruleRef),
+                    () =>
+                      many->Array.mapWithIndex(((new, subst), idx) =>
+                        Results.Action(Results.Text(`option ${Int.toString(idx + 1)}`), new, subst)
+                      ),
+                  ),
+                ]
+              }
+            })
+
+          Results.atAssumption(i, results)
+        })
+      byAssumption->Array.reduce(Results.emptyAttached(), Results.combine)
   }
 }
 

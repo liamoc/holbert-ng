@@ -510,6 +510,16 @@ let parsePath = (str:string) => {
   | _ => ([],str)
   }
 }
+let freshenMetas = (~existing: array<meta>, ~incoming: array<meta>): array<meta> => {
+  let taken = ref(existing)
+  incoming->Array.map(name => {
+    let rec freshen = candidate =>
+      taken.contents->Array.some(n => n == candidate) ? freshen(candidate ++ "'") : candidate
+    let fresh = freshen(name)
+    taken := Array.concat(taken.contents, [fresh])
+    fresh
+  })
+}
 
 let emptyGrammar = MixfixGrammar.compile(
       MixfixGrammar.opFromName("eq", "_=_", ~assoc=NonAssoc)

@@ -131,28 +131,41 @@ module Make = (Term: TERM, Judgment : REWRITABLE_JUDGMENT with module Term := Te
           }
         }
       }
-    
-    let dirLabel = d => switch d { | Forward => "" | Backward => " ⤺" }
 
-    context
-    ->Context.facts
-    ->Array.map(((ruleName, rule)) => {
-      let keyName = Method.RuleRef.prettyPrint(ruleName, ~assms=context.localFactNames)
-      let actions = switch actionsFor(ruleName, rule) {
-      | [] => []
-      | [(step, subst)] => [Results.Action(`rewrite ${keyName} ${dirLabel(step.direction)}`, step, subst)]
-      | many => [
-          Results.Group(
-            `rewrite ${keyName}`,
-            many->Array.map(((step, subst)) => 
-              Results.Action(`${Judgment.prettyPrintPath(step.path)} ${dirLabel(step.direction)}`, step, subst)),
-          ),
-        ]
-      }
-      {Results.goal: actions, assumptions: []}
-    })->Array.reduce(Results.emptyAttached(), Results.combine)
+    let dirLabel = d => switch d { | Forward => "→" | Backward => "←" }
+
+    let results = context->Context.facts
+      ->Array.filterMap(((ruleName, rule)) =>
+        switch actionsFor(ruleName, rule) {
+        | [] => None
+        | [(step, subst)] =>
+            Some(Results.Action(
+              Results.Seq([Results.RefRule(ruleName), Results.Text(dirLabel(step.direction))]),
+              step,
+              subst,
+            ))
+        | many => Some(
+            Results.Delay(
+              Results.Seq([Results.RefRule(ruleName)]),
+              () => many->Array.map(((step, subst)) =>
+                Results.Action(
+                  Results.Seq([
+                    Results.Text(Judgment.prettyPrintPath(step.path)),
+                    Results.Text(dirLabel(step.direction)),
+                  ]),
+                  step,
+                  subst,
+                )
+              ),
+            ),
+          )
+        })
+    if results->Array.length > 0 {
+      Results.atGoal([Results.Group(Results.Text("Rewriting"),results)])
+    } else {
+      Results.emptyAttached()
+    }
   }
-
   let prettyPrint = (
       it: t<'a>,
       ~grammar,

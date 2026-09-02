@@ -1,13 +1,16 @@
 // resizable.js
 (function () {
+  let lastWidth = null; 
   function initResizable(el) {
     const handle = document.createElement("div");
     handle.className = "resize-handle";
     el.prepend(handle);
 
     const minWidth = parseInt(el.dataset.minWidth || "220", 10);
-    const maxWidth = parseInt(el.dataset.maxWidth || "600", 10);
-
+    const maxWidth = parseInt(el.dataset.maxWidth || "1000", 10);
+    if (lastWidth != null) {
+      el.style.width = lastWidth + "px";
+    }
     let dragging = false;
 
     handle.addEventListener("mousedown", (e) => {
@@ -20,7 +23,9 @@
       if (!dragging) return;
       const rect = el.getBoundingClientRect();
       const newWidth = rect.right - e.clientX;
-      el.style.width = Math.min(maxWidth, Math.max(minWidth, newWidth)) + "px";
+      const newWidth2 = Math.min(maxWidth, Math.max(minWidth, newWidth))
+      el.style.width = newWidth2 + "px";
+      lastWidth = newWidth2;
     });
 
     window.addEventListener("mouseup", () => {

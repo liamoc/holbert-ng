@@ -1,6 +1,6 @@
 open Signatures
 open MethodView
-
+@val external computeGoalIndex: Dom.element => int = "computeGoalIndex"
 @send external closest: ({..}, string) => Nullable.t<Dom.element> = "closest"
 @send external focus: {..} => unit = "focus"
 @send external addEventListener: (Dom.element, string, Dom.event => unit) => unit = "addEventListener"
@@ -11,69 +11,97 @@ module Make = (
   JudgmentView: JUDGMENT_VIEW with module Term := Term and module Judgment := Judgment,
   MethodView: METHOD_VIEW with module Term := Term and module Judgment := Judgment,
 ) => {
+  
+  type ruleStyle = RuleView.style
+  let linearStyle = RuleView.Linear
+  module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
+  
   module Rule = Rule.Make(Term, Judgment)
   module ScopeView = ScopeView.Make(Term, JudgmentView.TermView)
   module Proof = Proof.Make(Term, Judgment, MethodView.Method)
   module Results = Method.MethodResults(Term)
   module ResultsView = {
-    type level<'a> = {label: option<string>, nodes: array<Results.t<'a>>}
+    type level<'a> = {label: option<Results.label>, nodes: array<Results.t<'a>>}
+
     type props = {
+      ctx: MethodView.Method.Context.t,
+      grammar: Term.grammar,
+      ruleStyle: ruleStyle,
       initialNodes: array<Results.t<MethodView.Method.t<Proof.checked>>>,
       onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
-      //onBlur: ReactEvent.Focus.t => unit,
     }
 
     @react.componentWithProps
     let make = (props: props) => {
       let (path, setPath) = React.useState(() => [{label: None, nodes: props.initialNodes}])
-
       let drillDown = (label, newNodes) =>
         setPath(prev => Array.concat(prev, [{label: Some(label), nodes: newNodes}]))
-
       let goBack = _ =>
         setPath(prev => Array.length(prev) > 1 ? Array.slice(prev, ~start=0, ~end=Array.length(prev) - 1) : prev)
-
       let current = path->Belt.Array.getExn(Array.length(path) - 1)
+
+      let rec renderLabel = (label: Results.label, ~suppressRules: bool=false) =>
+        switch label {
+        | Assumptions => <span className="assumptions-label">{React.string("Assumptions")}</span>
+        | Text(s) => React.string(s)
+        | Ref(ref) => <RuleRefView ruleRef=ref assms={props.ctx.localFactNames} />
+        | RefRule(ref) if suppressRules => <RuleRefView ruleRef=ref assms={props.ctx.localFactNames} />
+        | RefRule(ref) =>
+          switch props.ctx->MethodView.Method.Context.lookup(ref) {
+          | None => React.string("Unknown rule!")
+          | Some(rule) =>
+            <RuleView rule style=props.ruleStyle grammar=props.grammar scope={props.ctx.fixes}>
+              <RuleRefView ruleRef=ref assms={props.ctx.localFactNames} />
+            </RuleView>
+          }
+        | Seq(seq) => seq->Array.map(s => renderLabel(s, ~suppressRules))->React.array
+        }
+
+      // A node rendered as an item within the current menu level: bare
+      // actions/delays render as buttons; groups render as a labeled
+      // section containing their own children, recursively (a group's
+      // children can themselves include nested groups/actions/delays).
+      let rec renderNode = (node: Results.t<'a>, i: int) =>
+        switch node {
+        | Action(label, nextTree, subst) =>
+          <button tabIndex=0 key={i->Int.toString} onClick={_ => props.onApply(nextTree, subst)}>
+            {renderLabel(label)}
+          </button>
+        | Delay(label, getChildren) =>
+          <button tabIndex=0 key={i->Int.toString} onClick={_ => drillDown(label, getChildren())}>
+            {renderLabel(label)}
+          </button>
+        | Group(label, children) =>
+          <div className="results-group" key={i->Int.toString}>
+            <div className="results-group-label"> {renderLabel(label)} </div>
+            <div className="results-group-items">
+              {children->Array.mapWithIndex((c, j) => renderNode(c, j))->React.array}
+            </div>
+          </div>
+        }
 
       <div className="drill-down-container">
         <div className="breadcrumbs">
-          {path
-          ->Array.filterMap(lvl => lvl.label)
-          ->Array.mapWithIndex((label, i) =>
-            <div key={Int.toString(i)} className="breadcrumb-heading"> {React.string(label)} </div>
-          )
-          ->React.array}
+        {
+          let labels = path->Array.filterMap(lvl => lvl.label)
+          labels
+          ->Array.mapWithIndex((label, i) => {
+            let isLast = i == Array.length(labels) - 1
+            <div
+              key={Int.toString(i)}
+              className={`breadcrumb-heading ${isLast ? "breadcrumb-heading-current" : ""}`}
+              onClick={isLast ? goBack : ignore}
+              tabIndex={isLast ? 0 : (-1)}>
+              {renderLabel(label, ~suppressRules=true)}
+              {isLast ? <span className="breadcrumb-close typcn typcn-times" /> : React.null}
+            </div>
+          })
+          ->React.array
+        }
         </div>
-        {Array.length(path) > 1
-          ? <button tabIndex=0 onClick={goBack} className="back-button">
-              {React.string("← Back")}
-            </button>
-          : React.null}
         <div className="menu-options">
-          {current.nodes
-          ->Array.mapWithIndex((node, i) =>
-            switch node {
-            | Action(label, nextTree, subst) =>
-              <button
-                tabIndex=0 key={label ++ i->Int.toString}
-                onClick={_ => props.onApply(nextTree, subst)}>
-                {React.string(label)}
-              </button>
-            | Group(label, children) =>
-              <button
-                tabIndex=0 key={label ++ i->Int.toString}
-                onClick={_ => drillDown(label, children)}>
-                {React.string(label ++ " →")}
-              </button>
-            | Delay(label, getChildren) =>
-              <button
-                tabIndex=0 key={label ++ i->Int.toString}
-                onClick={_ => drillDown(label, getChildren())}>
-                {React.string(label ++ " ...")}
-              </button>
-            }
-          )
-          ->React.array}
+          {current.nodes->Array.mapWithIndex((node, i) => renderNode(node, i))->React.array}
+          <div className="sidebar-rule"></div>
         </div>
       </div>
     }
@@ -83,6 +111,7 @@ module Make = (
       ctx: MethodView.Method.Context.t,
       goal: Judgment.t,
       grammar: Term.grammar,
+      ruleStyle: ruleStyle,
       attached: Results.attached<MethodView.Method.t<Proof.checked>>,
       onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
       //onBlur: ReactEvent.Focus.t => unit,
@@ -91,10 +120,10 @@ module Make = (
     let topLevelNodes = (props: props): array<Results.t<MethodView.Method.t<Proof.checked>>> => {
       let assumptionGroups =
         props.attached.assumptions->Array.map(((i, results)) => {
-          let name = props.ctx.localFactNames[i]->Option.getOr(`#${Int.toString(i)}`)
-          Results.Group(name, results)
+          //let name = props.ctx.localFactNames[i]->Option.getOr(`#${Int.toString(i)}`)
+          Results.Delay(Results.RefRule(Local({index:i})), () => results)
         })
-      Array.concat(assumptionGroups, props.attached.goal)
+      Array.concat([Results.Group(Results.Assumptions,assumptionGroups)], props.attached.goal)
     }
 
     @react.componentWithProps
@@ -102,9 +131,12 @@ module Make = (
       <div className="sidebar-content resizable-panel">
         <div className="sidebar-goal">
           <ScopeView scope={props.ctx.fixes} editable=None />
+          <div className="sidebar-goal-judgment">
           <JudgmentView judgment={props.goal} grammar={props.grammar} scope={props.ctx.fixes} />
+          </div>
         </div>
         <ResultsView
+          ctx={props.ctx} grammar={props.grammar} ruleStyle={props.ruleStyle}
           initialNodes={topLevelNodes(props)}
           onApply={props.onApply}
         />
@@ -117,15 +149,12 @@ module Make = (
   type props = {
     proof: Proof.checked,
     ctx: MethodView.Method.Context.t,
-    ruleStyle: RuleView.style,
+    ruleStyle: ruleStyle,
     grammar: Term.grammar,
     gen: Term.gen,
     onChange: (Proof.checked, Term.subst) => unit,
   }
   
-  type ruleStyle = RuleView.style
-  let linearStyle = RuleView.Linear
-  module RuleView = RuleView.Make(Term, Judgment, JudgmentView)
   
   module DisplayModeTabs = {
     type tabProps = {
@@ -152,7 +181,15 @@ module Make = (
         </div>
       </span>
   }
-  
+  module FocusNextContext = {
+    type t = {requestFocusIndex: int => unit}
+
+    let context = React.createContext({requestFocusIndex: (_: int) => ()})
+
+    module Provider = {
+      let make = React.Context.provider(context)
+    }
+  }
   module GoalButton = {
     type props = {
       ctx: MethodView.Method.Context.t,
@@ -160,34 +197,41 @@ module Make = (
       display: Proof.display,
       grammar: Term.grammar,
       gen: Term.gen,
+      ruleStyle: ruleStyle,
       onApply: (MethodView.Method.t<Proof.checked>, Term.subst) => unit,
     }
 
     @react.componentWithProps
     let make = (props: props) => {
       let {sidebarRef} = React.useContext(SidebarContext.context)
+      let {requestFocusIndex} = React.useContext(FocusNextContext.context)
       let (isFocused, setFocused) = React.useState(() => false)
       let groupId = React.useId()
+      let elRef = React.useRef(Nullable.null)
       let onBlur = e => {
-        let stillInGroup =
-          ReactEvent.Focus.relatedTarget(e)
-          ->Option.flatMap(el => el->closest(`.outside-click-group-${groupId}`)->Nullable.toOption)
-          ->Option.isSome
-        if !stillInGroup {
-          setFocused(_ => false)
+        switch ReactEvent.Focus.relatedTarget(e) {
+        | None => () // focus moved to nothing focusable, let outsideclick decide
+        | Some(el) =>
+          let stillInGroup = el->closest(`.outside-click-group-${groupId}`)->Nullable.toOption->Option.isSome
+          if !stillInGroup {
+            setFocused(_ => false)
+          }
         }
       }
-      let setRef = (node: Nullable.t<Dom.element>): option<unit => unit> => {
+      let setRef = React.useCallback0((node: Nullable.t<Dom.element>): option<unit => unit> => {
         Console.log2("setRef called", node)
+        elRef.current = node
         switch node->Nullable.toOption {
         | None => None
         | Some(el) => {
-            let handler = _ => setFocused(_ => false)
+            let handler = _ => {
+              setFocused(_ => false)
+            }
             el->addEventListener("outsideclick", handler)
             Some(() => el->removeEventListener("outsideclick", handler))
           }
         }
-      }
+        })
       let portal = switch sidebarRef.current->Nullable.toOption {
       | None => React.null
       | Some(node) =>
@@ -195,7 +239,7 @@ module Make = (
           Proof.check(
             props.ctx,
             {
-              fixes: rl.vars,
+              fixes: Term.freshenMetas(~existing=props.ctx.fixes, ~incoming=rl.vars),
               method: None,
               assumptions: Array.fromInitializer(~length=rl.premises->Array.length, i =>
                 Int.toString(i + props.ctx.localFacts->Array.length)
@@ -205,8 +249,18 @@ module Make = (
             rl,
           )
         )
-
-        Portal.createPortal(<div className={`outside-click-group-${groupId}`} onBlur><SidebarView ctx={props.ctx} goal={props.conclusion} grammar={props.grammar} attached=res onApply=props.onApply /></div>, node)
+        
+        Portal.createPortal(
+          <div className={`outside-click-group-${groupId}`} onBlur>
+          <SidebarView ctx={props.ctx} goal={props.conclusion} grammar={props.grammar} ruleStyle={props.ruleStyle} attached=res 
+          onApply={(opt, subst) => {
+            switch elRef.current->Nullable.toOption {
+            | Some(el) => requestFocusIndex(computeGoalIndex(el))
+            | None => ()
+            }
+            props.onApply(opt, subst)
+          }}
+          /></div>, node)
       }
 
       <div ref={ReactDOM.Ref.callbackDomRef(setRef)}
@@ -268,7 +322,7 @@ module Make = (
               }
             </>
           | Goal =>
-            <GoalButton ctx conclusion=rule.conclusion display gen=props.gen grammar=props.grammar
+            <GoalButton ctx conclusion=rule.conclusion display gen=props.gen grammar=props.grammar ruleStyle=props.ruleStyle
               onApply={(opt, subst) =>
                 props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}), subst)}
             />
@@ -337,7 +391,8 @@ module Make = (
                 </td></>
               | Goal => count := 1
                 <><td className="rule-cell rule-premise">
-                  <GoalButton ctx conclusion=rule.conclusion display gen=props.gen grammar=props.grammar
+                  <GoalButton ctx conclusion=rule.conclusion display 
+                    gen=props.gen grammar=props.grammar  ruleStyle=props.ruleStyle
                     onApply={(opt, subst) =>
                       props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}), subst)}
                   />
@@ -399,15 +454,7 @@ module Make = (
       let {sidebarRef} = React.useContext(SidebarContext.context)
       let (isFocused, setFocused) = React.useState(() => false)
 
-      let onBlur = e => {
-        let leavingProof =
-          ReactEvent.Focus.relatedTarget(e)
-          ->Option.flatMap(el => el->closest(".sidebar")->Nullable.toOption)
-          ->Option.isNone
-        if leavingProof {
-          setFocused(_ => false)
-        }
-      }
+
       switch props.proof {
       | Proof.Checked({fixes, assumptions, method, rule, display}) =>
         switch Proof.enter(props.ctx, {fixes, assumptions, method: None, display}, rule) {
@@ -475,9 +522,9 @@ module Make = (
               | Goal =>
                 <GoalButton
                   ctx
-                  conclusion=rule.conclusion
+                  conclusion=rule.conclusion 
                   display
-                  gen=props.gen grammar=props.grammar
+                  gen=props.gen grammar=props.grammar  ruleStyle=props.ruleStyle
                   onApply={(opt, subst) =>
                     props.onChange(Proof.Checked({fixes, assumptions, method: Do(opt), rule, display}), subst)}
                 />

@@ -69,7 +69,6 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 }
 .axiom {
   display:inline-block;
-  margin-right:10px;
   margin-bottom:5px;
   margin-top:5px;
   vertical-align: bottom;
@@ -78,6 +77,9 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
 .axiom-set {
   white-space:normal;
   line-height:1.00;
+}
+.axiom-set > .axiom {
+  margin-left:15px;
 }
 .inline-rule > span > div {
   display:inline-block;
@@ -312,15 +314,17 @@ display:block;
 }
 .proof-assumptions-Hybrid > li {
   display: inline-block;
+  margin-left:10px;
 }
 .proof-tree {
   padding:10px;
 }
 .proof-assumptions-Gentzen > li {
   display: inline-block;
+    margin-left:10px;
 }
 .axiom-set-Linear > section > details > .inline-rule {
-display:block;
+  display:block;
 }
 .proof-text {
   font-style:italic;
@@ -345,6 +349,7 @@ display:block;
   border-top: 1px solid rgba(1, 1, 1, 0.2);
 }
 .proof-step {
+    overflow:scroll;
     padding-left: 5px;
     padding-right: 5px;
     margin-bottom: 5px;
@@ -423,10 +428,42 @@ display:block;
   cursor: ew-resize;
   z-index: 1;
 }
+.results-group {
+  padding-top: 0.2rem;
+  padding-bottom: 0.4rem;
+  border-top: 1px solid var(--group-border, #eee);
+}
 
+.results-group:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.results-group-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding-left: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--group-label-color, #888);
+}
+
+.results-group-items {
+  display: block;
+}
 .resize-handle:hover {
   background: rgba(0, 0, 0, 0.08);
 }
+
+.results-group:has(> .results-group-label .assumptions-label) {
+  margin-top: 0px;
+  margin-bottom: 0;
+  padding-top:0.2rem;
+  background: var(--assumptions-bg, #fff);
+  border-radius: 6px;
+  border-top: none;
+}
+
 .sidebar-content {
   position: fixed;
   top: 0;
@@ -437,17 +474,24 @@ display:block;
   display: flex;
   flex-direction: column;
   min-width: 260px;
-  max-width: 360px;
+  width: 280px;
   background: var(--sidebar-bg, #fafafa);
   border-left: 1px solid var(--sidebar-border, #ddd);
   box-shadow: -2px 0 8px rgba(0, 0, 0, 0.12);
   font-size: 0.9rem;
   overflow: hidden;
 }
-
+.sidebar-goal-judgment {
+  padding-left: 0.4rem;
+}
+.sidebar-rule {
+  border-top: 1px solid var(--sidebar-border, #ddd);
+}
 .sidebar-goal {
   flex: 0 0 auto;
-  padding: 0.75rem 1rem;
+  padding: 0.75rem 0.75rem;
+  font-family: 'Neo Euler Medium';
+  font-size: large;
   border-bottom: 1px solid var(--sidebar-border, #ddd);
   background: var(--sidebar-goal-bg, #fff);
 }
@@ -456,16 +500,18 @@ display:block;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* required so the scrolling child below can actually shrink */
+  min-height: 0;
   overflow: hidden;
 }
-
+.breadcrumbs:empty {
+  display: none;
+}
 .breadcrumbs {
   flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
-  padding: 0.5rem 1rem 0;
+  padding: 0.5rem 0.5rem 0;
 }
 
 .breadcrumb-heading {
@@ -476,12 +522,32 @@ display:block;
   background: var(--breadcrumb-bg, #eee);
   border-radius: 999px;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
 }
 
 .breadcrumb-heading:not(:last-child)::after {
   content: "›";
   margin-left: 0.4rem;
   color: var(--breadcrumb-arrow, #aaa);
+}
+
+.breadcrumb-heading-current {
+  cursor: pointer;
+}
+
+.breadcrumb-heading-current:hover {
+  background: var(--breadcrumb-hover-bg, #ddd);
+}
+
+.breadcrumb-close {
+  font-size: 0.7rem;
+  opacity: 0.6;
+}
+
+.breadcrumb-heading-current:hover .breadcrumb-close {
+  opacity: 1;
 }
 
 .back-button {
@@ -505,13 +571,15 @@ display:block;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 0.3rem;
-  padding: 0.75rem 1rem;
 }
-
+.menu-options > button {
+  margin-right:7px;
+  margin-bottom:7px;
+}
 .menu-options button {
   text-align: left;
-  padding: 0.45rem 0.7rem;
+  margin-left:7px;
+  margin-top:7px;
   border: 1px solid var(--sidebar-border, #ddd);
   border-radius: 6px;
   background: var(--action-bg, #fff);
