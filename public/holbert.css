@@ -78,7 +78,7 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
   white-space:normal;
   line-height:1.00;
 }
-.axiom-set > .axiom {
+.axiom-set .axiom {
   margin-left:15px;
 }
 .inline-rule > span > div {
@@ -341,6 +341,7 @@ display:block;
 .proof-denest > .proof-step {
   padding-left: 0px;
   padding-right: 0px;
+  padding-bottom: 0px;
   margin-bottom: 0px;
   border-radius: 0px;
   border: 0;
@@ -349,9 +350,11 @@ display:block;
   border-top: 1px solid rgba(1, 1, 1, 0.2);
 }
 .proof-step {
-    overflow:scroll;
+    overflow-x:scroll;
+    overflow-y: clip;
     padding-left: 5px;
     padding-right: 5px;
+    padding-bottom:10px;
     margin-bottom: 5px;
     border-radius: 5px;
     border: 1px solid rgba(1, 1, 1, 0.2);
@@ -597,4 +600,11 @@ display:block;
 .menu-options button:focus-visible {
   outline: 2px solid var(--focus-ring, #4a7dfc);
   outline-offset: 1px;
+}
+
+.axiom-set > section > details > summary > header > h1 {
+      font-size: 12pt;
+}
+.axiom-set > section > details > summary > header {
+      display:inline-block;
 }
