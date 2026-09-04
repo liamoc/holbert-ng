@@ -1,7 +1,7 @@
 
 let makeMeta = (str: string) =>
   <span className="rule-binder">
-    {React.string(str)}
+    <IdentifierView identifier=str />
     {React.string(".")}
   </span>
 let makeEditableMeta = (str: string,~onChange: string => unit ) => {
@@ -11,7 +11,7 @@ let makeEditableMeta = (str: string,~onChange: string => unit ) => {
     | Ok((_,rest)) => Error("trailing string after meta name: "->String.concat(rest))
     }
   <span className="rule-binder">
-    <UIWidgets.EditableLabel label={str} onConfirm={handleConfirm} />
+    <EditableLabel label={str} onConfirm={handleConfirm} />
     {React.string(".")}
   </span>  
 }
@@ -19,29 +19,15 @@ let makeEditableMeta = (str: string,~onChange: string => unit ) => {
 type props = {term: HOTerm.t, grammar: HOTerm.grammar, scope: array<string>}
 module JsxTarget: MixfixPrinter.PRINT_TARGET with type out = React.element = {
   type out = React.element
-  let symbolFont = s =>  <span className="term-op-lit">{React.string(s)}</span>
-  let renderSymbol = s => switch s {
-  | "&&" => symbolFont("∧")
-  | "||" => symbolFont("∨")
-  | "not" => symbolFont("¬")
-  | "->" => symbolFont("→")
-  | "<->" => symbolFont("↔")
-  | "all" => symbolFont("∀")
-  | "exists" => symbolFont("∃")
-  | "top" => symbolFont("⊤")
-  | "bot" => symbolFont("⊥")
-  | s => <span className="term-symbol">{React.string(s)}</span>
-  }
+
   
   let leaf = (~kind, s) => {
     if kind == "constructor" {
-       <span className={`term-${kind}`}>{React.string(s->String.sliceToEnd(~start=1))}</span>
-    } else if kind == "symbol" || kind == "op-lit" {
-      renderSymbol(s)
+       <span className={`term-${kind}`}><IdentifierView identifier={s->String.sliceToEnd(~start=1)}/></span>
     } else {
-      <span className={`term-${kind}`}>{React.string(s)}</span>
+      <span className={`term-${kind}`}><IdentifierView identifier={s} /></span>
     }
-  } 
+  }
   let keyed = (el: React.element, i : int): React.element =>
     <React.Fragment key={Int.toString(i)}> {el} </React.Fragment>
   let seq = arr => arr->Array.mapWithIndex(keyed)->React.array

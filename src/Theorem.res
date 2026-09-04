@@ -98,7 +98,7 @@ module Make = (
     }    
     <SidebarContext sidebarRef>
       <RuleView rule={props.content.rule} grammar={props.imports.grammar} scope={[]} style={ruleStyle}>
-          <span className="rule-rulename-global">{React.string(props.content.name)}</span>
+          <span className="rule-rulename-global"><IdentifierView identifier=props.content.name /></span>
       </RuleView>
       <h4> {React.string("Proof")} </h4>
       <ProofView.FocusNextContext.Provider value={{requestFocusIndex:requestFocusIndex}}>

@@ -178,6 +178,7 @@ src: local('Neo Euler Medium'), url('/euler.woff') format('woff');
     height: 1em;
 }
 .rule-binders {
+    font-family:'Neo Euler Medium';
     padding-right: 4px;
 }
 .rule-binder {
@@ -354,7 +355,7 @@ display:block;
     overflow-y: clip;
     padding-left: 5px;
     padding-right: 5px;
-    padding-bottom:10px;
+    padding-bottom:5px;
     margin-bottom: 5px;
     border-radius: 5px;
     border: 1px solid rgba(1, 1, 1, 0.2);
@@ -607,4 +608,87 @@ display:block;
 }
 .axiom-set > section > details > summary > header {
       display:inline-block;
+}
+
+.grammar-view {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.6rem 0.8rem;
+  font-size: 0.9rem;
+}
+
+.grammar-section-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--grammar-title-color, #888);
+  margin-bottom: 0.3rem;
+}
+
+.grammar-op-row,
+.grammar-tighter-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+}
+
+.grammar-op-row:hover,
+.grammar-tighter-row:hover {
+  background: var(--grammar-row-hover, #f4f4f4);
+}
+
+.grammar-op-name {
+  background: var(--grammar-code-bg, #f0f0f0);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+}
+
+.grammar-op-category,
+.grammar-cat-badge {
+  font-size: 0.75rem;
+  color: var(--grammar-category-color, #567);
+  background: var(--grammar-category-bg, #eaf0fb);
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+.assoc-badge {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 3px;
+  min-width: 3.2rem;
+  text-align: center;
+}
+
+.assoc-left { background: #ffe9d6; color: #a05a00; }
+.assoc-right { background: #dcefff; color: #0a5aa0; }
+.assoc-none { background: #eee; color: #666; }
+
+.grammar-tighter-arrow {
+  font-size: 0.75rem;
+  color: var(--grammar-arrow-color, #999);
+}
+
+.grammar-empty {
+  color: var(--grammar-empty-color, #999);
+  font-style: italic;
+  padding: 0.4rem;
+}
+.ident-sep {
+  color: var(--identifier-sep-color, #bbb);
+  margin: 0 0.05em;
+}
+
+.ident-bold {
+  font-weight: 700;
+  font-variant:initial;
+  font-family: 'Computer Modern Sans';
+}
+.ident-op-lit {
+  font-family: 'Neo Euler Medium';
 }

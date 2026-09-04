@@ -23,7 +23,7 @@ module Make = (
 
   let makeMeta = (str: string) =>
     <span className="rule-binder">
-      {React.string(str)}
+      <IdentifierView identifier=str />
       {React.string(".")}
     </span>
   let makeEditableMeta = (str: string,~onChange: string => unit ) => {
@@ -33,7 +33,7 @@ module Make = (
       | Ok((_,rest)) => Error(`Trailing text: ${rest}`)
       }
     <span className="rule-binder">
-      <UIWidgets.EditableLabel label={str} onConfirm={handleConfirm} />
+      <EditableLabel label={str} onConfirm={handleConfirm} />
       {React.string(".")}
     </span>  
   }

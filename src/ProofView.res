@@ -405,12 +405,13 @@ module Make = (
             { let i = ref(0)
               let arr = Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
                 i := i.contents + 1
+                let thisI = i.contents
                 let handleChange = s =>
                   switch Rule.parseRuleName(String.trim(s)) {
                   | Ok((_, "")) => {
                       props.onChange(
                         Proof.Checked({fixes,
-                          assumptions: Util.updateAtIndex(assumptions, i.contents - 1, s),
+                          assumptions: Util.updateAtIndex(assumptions, thisI - 1, s),
                           method, rule, display}),
                         Term.makeSubst(),
                       )
@@ -428,7 +429,8 @@ module Make = (
                     }
                   }
                   <RuleView rule=r style={linearStyle} scope={ctx.fixes} grammar={props.grammar}>
-                    <span className="rule-rulename-local"><UIWidgets.EditableLabel label=n onConfirm={handleChange} /></span>
+                    <span className="rule-rulename-local">
+                    <EditableLabel label=n onConfirm={handleChange} /></span>
                   </RuleView>
                 </span>
               })->React.array
@@ -487,12 +489,13 @@ module Make = (
                   { let i = ref(0)
                     Belt.Array.zipBy(assumptions, rule.premises, (n, r) => {
                       i := i.contents + 1
+                      let thisI = i.contents
                       let handleChange = s =>
                         switch Rule.parseRuleName(String.trim(s)) {
                         | Ok((_, "")) => {
                             props.onChange(
                               Proof.Checked({fixes,
-                                assumptions: Util.updateAtIndex(assumptions, i.contents - 1, s),
+                                assumptions: Util.updateAtIndex(assumptions, thisI - 1, s),
                                 method, rule, display}),
                               Term.makeSubst(),
                             )
@@ -504,7 +507,7 @@ module Make = (
                       <li key={Int.toString(i.contents - 1)}>
                       
                         <RuleView rule=r style=props.ruleStyle scope={ctx.fixes} grammar={props.grammar}>
-                          <span className="rule-rulename-local"><UIWidgets.EditableLabel label=n onConfirm={handleChange} /></span>
+                          <span className="rule-rulename-local"><EditableLabel label=n onConfirm={handleChange} /></span>
                         </RuleView>
                       </li>
                     })->React.array}

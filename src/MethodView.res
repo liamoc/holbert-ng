@@ -44,7 +44,7 @@ module RuleRefView = {
             <span className="rule-ref__index"> {React.string(`@${Belt.Int.toString(index)}`)} </span>
           </span>
         } else {
-          <span className="rule-ref rule-rulename-local"> {React.string(name)} </span>
+          <span className="rule-ref rule-rulename-local"> <IdentifierView identifier=name /> </span>
         }
       }
     | Global({name}) =>
@@ -54,7 +54,7 @@ module RuleRefView = {
           {React.string(name)}
         </span>
       } else {
-        <span className="rule-ref rule-rulename-global"> {React.string(name)} </span>
+        <span className="rule-ref rule-rulename-global"> <IdentifierView identifier=name /> </span>
       }
     }
   }
@@ -85,26 +85,29 @@ module DerivationView = (Term: TERM, Judgment: JUDGMENT with module Term := Term
     props => {
       <div>
         <span className="typcn typcn-media-play"></span>{summary(props)}
-        <ul className="subgoals">
-          {props.method.subgoals
-          ->Array.mapWithIndex((sg, i) => {
-            <li key={String.make(i)}>
-              {React.createElement(
-                subRender,
-                {
-                  "proof": sg,
-                  "ctx": props.ctx,
-                  "ruleStyle": props.ruleStyle,
-                  "grammar": props.grammar,
-                  "gen": props.gen,
-                  "onChange": (newa, subst: Term.subst) =>
-                    props.onChange(props.method->Method.setSubproof(i, newa), subst),
-                },
-              )}
-            </li>
-          })
-          ->React.array}
-        </ul>
+        {if props.method.subgoals->Array.length > 0 {
+          <ul className="subgoals">
+            {props.method.subgoals
+            ->Array.mapWithIndex((sg, i) => {
+              <li key={String.make(i)}>
+                {React.createElement(
+                  subRender,
+                  {
+                    "proof": sg,
+                    "ctx": props.ctx,
+                    "ruleStyle": props.ruleStyle,
+                    "grammar": props.grammar,
+                    "gen": props.gen,
+                    "onChange": (newa, subst: Term.subst) =>
+                      props.onChange(props.method->Method.setSubproof(i, newa), subst),
+                  },
+                )}
+              </li>
+            })
+            ->React.array}
+          </ul>
+        } else { React.null } 
+        }
       </div>
     }
 }
@@ -140,6 +143,7 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
   let make = (subRender: srProps<'a> => React.element) => props => {
       <div>
         <span className="typcn typcn-media-play"></span>{summary(props)}
+        {if props.method.subgoals->Array.length > 0 {
         <ul className="subgoals">
           {props.method.subgoals->Array.mapWithIndex((sg, i) => {
             <li key={String.make(i)}>
@@ -159,6 +163,9 @@ module EliminationView = (Term: TERM, Judgment: JUDGMENT with module Term := Ter
           })
           ->React.array}
         </ul>
+        
+        } else { React.null }
+        }
       </div>
     }
 }
