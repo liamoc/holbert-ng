@@ -636,11 +636,6 @@ display:block;
   border-radius: 4px;
 }
 
-.grammar-op-row:hover,
-.grammar-tighter-row:hover {
-  background: var(--grammar-row-hover, #f4f4f4);
-}
-
 .grammar-op-name {
   background: var(--grammar-code-bg, #f0f0f0);
   padding: 0.05rem 0.35rem;
@@ -691,4 +686,48 @@ display:block;
 }
 .ident-op-lit {
   font-family: 'Neo Euler Medium';
+}
+.settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  grid-template-areas:
+    "label control"
+    "desc  desc";
+  gap: 0.15rem 0.75rem;
+  align-items: center;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--settings-border, #eee);
+}
+
+.settings-row:last-child {
+  border-bottom: none;
+}
+
+.settings-label {
+  grid-area: label;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.settings-select {
+  grid-area: control;
+  justify-self: start;
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--select-border, #ccc);
+  border-radius: 4px;
+  background: var(--select-bg, #fff);
+}
+
+.settings-desc {
+  grid-area: desc;
+  font-size: 0.75rem;
+  color: var(--settings-desc-color, #888);
 }
