@@ -13,8 +13,7 @@
     "res:dev": "rescript watch",
     "res:format": "rescript format",
     "test": "pta 'tests/*.mjs'",
-    "test-watch": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'",
-    "prepare": "husky"
+    "test-watch": "onchange --initial '{tests,src}/*.mjs' -- pta 'tests/*.mjs'"
   },
   "dependencies": {
     "@jmagaram/rescript-seq": "^4.4.1",
@@ -35,15 +34,10 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
-    "husky": "^9.1.7",
-    "lint-staged": "^16.2.3",
     "onchange": "^7.1.0",
     "pta": "^1.3.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^7.2.6"
-  },
-  "lint-staged": {
-    "*.res": "rescript format"
   }
 }
