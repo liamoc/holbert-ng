@@ -272,6 +272,34 @@ let makeSolution = (rhs, spineArr) => {
   wrapLams(k, body)
 }
 
+let lookup = (term: t, subst: array<(t, t)>, ~n=0): option<t> => {
+  subst
+  ->Array.find(((from, _)) => equivalent(term, upshift(from, n)))
+  ->Option.map(((_, to)) => upshift(to, n))
+}
+let rec discharge = (subst: array<(t, t)>, term: t, ~n=0): t => {
+  switch lookup(term, subst, ~n) {
+  | Some(found) => found
+  | None =>
+    switch term {
+    | App({func, arg}) => App({func: discharge(subst, func, ~n), arg: discharge(subst, arg, ~n)})
+    | Lam({name, body}) => Lam({name, body: discharge(subst, body, ~n=n + 1)})
+    | Var(_) | Schematic(_) | Symbol(_) => term
+    }
+  }
+}
+let mkvars = (n: int): array<t> => {
+  Belt.Array.init(n, i => n - i - 1)->Array.map(x => Var({idx: x}))
+}
+let makeSolutionFCU = (rhs, spineArr) => {
+  let k = spineArr->Array.length
+  let zn = mkvars(k)
+  // we reversed it so that the last one will be picked if there are duplicates
+  let body = discharge(Belt.Array.reverse(Belt.Array.zip(spineArr, zn)), rhs)
+  let rec wrapLams = (m, b) => m <= 0 ? b : wrapLams(m - 1, Lam({name: "x", body: b}))
+  wrapLams(k, body)
+}
+
 let rec occurs = (n, t) =>
   switch t {
   | Symbol(_) | Var(_) => false
@@ -300,6 +328,55 @@ let freeVars = t => {
 }
 
 
+// FC pattern -> A Functional Implementation of
+//  Function-as-Constructor Higher-Order Unification
+// https://unif-workshop.github.io/UNIF2017/papers/UNIF_2017_paper_10.pdf
+// check (i) condition in the paper only:
+//  every ti is a term without binders, metavariables or free variables, but it can contain
+// function symbols with arity n > 0 and bound variables
+let rec isFCPatternI = t => {
+  switch t {
+  | Var({idx}) => true
+  | _ => {
+      let (head, args) = strip(t)
+      switch head {
+      | Symbol(_) => Array.every(args, isFCPatternI)
+      | _ => false
+      }
+    }
+  }
+}
+// check (ii) condition in the paper only:
+// (ii) every ti contains at least one bound variable
+let isFCPatternII = t => {
+  let freevars = freeVars(t)
+  freevars->Belt.Set.Int.size > 0
+}
+
+let isFCPattern = t => isFCPatternI(t) && isFCPatternII(t)
+
+// Is `t` of the form `Schematic(n)[x_i0, ..., x_i(k-1)]` with each
+// x_ij an FC pattern? (A Functional Implementation of
+//  Function-as-Constructor Higher-Order Unification)
+// https://unif-workshop.github.io/UNIF2017/papers/UNIF_2017_paper_10.pdf
+let asFCPattern = t => {
+  let (head, args) = strip(t)
+  switch head {
+  | Schematic({schematic}) =>
+    let idxs = Array.map(args, a =>
+      if isFCPattern(a) {
+        Some(a)
+      } else {
+        None
+      }
+    )
+    Array.every(idxs, Belt.Option.isSome)
+      ? Some((schematic, Array.map(idxs, Belt.Option.getExn)))
+      : None
+  | _ => None
+  }
+}
+
 // Try to solve `a` (assumed reduced) as a pattern for `b` (also
 // reduced). Occurs check + scope check (b's free vars ⊆ a's spine).
 let tryFlexSolve = (a, b) =>
@@ -318,6 +395,34 @@ let tryFlexSolve = (a, b) =>
   | None => None
   }
 
+let tryFlexSolveFCU = (a, b) =>
+  switch asFCPattern(a) {
+  | Some((n, spineArr)) =>
+    if occurs(n, b) {
+      None
+    } else {
+      let spineSet = ref(Belt.Set.Int.empty)
+      Array.forEach(spineArr, p => {
+        let freevars = freeVars(p)
+        spineSet := Belt.Set.Int.union(spineSet.contents, freevars)
+      })
+      if Belt.Set.Int.subset(freeVars(b), spineSet.contents) {
+        Some(Belt.Map.Int.fromArray([(n, makeSolutionFCU(b, spineArr))]))
+      } else {
+        None
+      }
+    }
+  | None => None
+  }
+
+
+let useFCU = true
+let tryFlexSolve_ = useFCU ? tryFlexSolveFCU : tryFlexSolve
+
+let asPattern_ = useFCU ? asFCPattern : t => {
+  asPattern(t)->Option.map(((n, spine)) => (n, spine->Array.map(p => Var({idx: p}))))
+}
+
 // M[spine1] =?= M[spine2], same M, spines differ: keep only the
 // positions where they agree, solve M in terms of a smaller fresh
 // metavariable applied to just those positions.
@@ -331,7 +436,7 @@ let tryFlexFlexSame = (n, spine1, spine2, gen) =>
     } else {
       let agree =
         Belt.Array.range(0, k - 1)->Belt.Array.keep(i =>
-          spine1->Belt.Array.getExn(i) == spine2->Belt.Array.getExn(i)
+          equivalent(spine1->Belt.Array.getExn(i), spine2->Belt.Array.getExn(i))
         )
       let n' = fresh(g)
       let body = agree->Array.reduce(Schematic({schematic: n'}), (acc, i) => App({
@@ -386,13 +491,13 @@ let rec unifyStep = (t1, t2, gen) => {
     | (Lam({body: b1}), _) => unifyStep(b1, App({func: upshift(t2, 1), arg: Var({idx: 0})}), gen)
     | (_, Lam({body: b2})) => unifyStep(App({func: upshift(t1, 1), arg: Var({idx: 0})}), b2, gen)
     | _ =>
-      switch (asPattern(t1), asPattern(t2)) {
+      switch (asPattern_(t1), asPattern_(t2)) {
       | (Some((n1, s1)), Some((n2, s2))) if n1 == n2 => tryFlexFlexSame(n1, s1, s2, gen)
       | _ =>
-        switch tryFlexSolve(t1, t2) {
+        switch tryFlexSolve_(t1, t2) {
         | Some(s) => Some(s)
         | None =>
-          switch tryFlexSolve(t2, t1) {
+          switch tryFlexSolve_(t2, t1) {
           | Some(s) => Some(s)
           | None => unifyRigidHeaded(t1, t2, gen, unifyStep)
           }
